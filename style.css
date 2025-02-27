@@ -5,12 +5,17 @@ body {
     color: #e2e8f0;
     text-align: center;
     padding: 20px;
+    margin: 0;
+    min-height: 100vh;
 }
 
 header {
     background: rgba(10, 10, 10, 0.9);
     padding: 15px;
     border-bottom: 2px solid #00e6e6;
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
 h1, h2 {
@@ -29,6 +34,23 @@ h1, h2 {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
+.staking-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+input[type="number"] {
+    background: #1a1a1a;
+    border: 1px solid #00e6e6;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px 0;
+    font-family: 'Orbitron', sans-serif;
+}
+
 /* Buttons */
 button {
     background: #00e6e6;
@@ -40,6 +62,7 @@ button {
     cursor: pointer;
     border-radius: 5px;
     transition: all 0.3s ease-in-out;
+    font-family: 'Orbitron', sans-serif;
 }
 
 button:hover {
@@ -115,6 +138,17 @@ input:checked + .slider:before {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
+#referralLink {
+    width: 80%;
+    background: #1a1a1a;
+    border: 1px solid #00e6e6;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 10px 0;
+    font-family: 'Orbitron', sans-serif;
+}
+
 /* Lottery Section */
 #lottery {
     background: #111;
@@ -124,4 +158,38 @@ input:checked + .slider:before {
     max-width: 500px;
     border: 1px solid #222;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+#stakingBenefits {
+    background: #111;
+    padding: 20px;
+    margin: 15px auto;
+    border-radius: 10px;
+    max-width: 500px;
+    border: 1px solid #222;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    section {
+        margin: 10px;
+        padding: 15px;
+    }
+
+    input, button {
+        width: 100%;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.2rem;
+    }
 }
