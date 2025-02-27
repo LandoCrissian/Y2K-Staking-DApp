@@ -1,115 +1,197 @@
-import { stakingContractAddress, stakingABI, pogsContractAddress, pogsABI } from './contract.js';
-
 let web3;
 let stakingContract;
 let pogsContract;
 let userAccount;
+const { stakingContractAddress, stakingABI, pogsContractAddress, pogsABI } = window.contractConfig;
 
-// Connect Wallet Function
-async function connectWallet() {
-    if (window.ethereum) {
+async function initializeWeb3() {
+    if (typeof window.ethereum !== 'undefined') {
         web3 = new Web3(window.ethereum);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const accounts = await web3.eth.getAccounts();
-        userAccount = accounts[0];
-
         stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress);
         pogsContract = new web3.eth.Contract(pogsABI, pogsContractAddress);
+        
+        window.ethereum.on('accountsChanged', function (accounts) {
+            userAccount = accounts[0];
+            updateUI();
+        });
 
-        updateUI();
-    } else {
-        alert("Please install MetaMask or a compatible wallet to use this feature.");
+        window.ethereum.on('chainChanged', function () {
+            window.location.reload();
+        });
     }
 }
 
-// Update UI Function (Fetches & Displays User Data)
+async function connectWallet() {
+    try {
+        if (!window.ethereum) {
+            throw new Error("Please install MetaMask or a compatible wallet.");
+        }
+
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAccount = accounts[0];
+        
+        document.getElementById('connectWallet').textContent = 
+            userAccount.substring(0, 6) + '...' + userAccount.substring(38);
+        
+        await updateUI();
+        return true;
+    } catch (error) {
+        console.error("Connection error:", error);
+        alert(error.message);
+        return false;
+    }
+}
+
 async function updateUI() {
     if (!userAccount) return;
 
     try {
-        // Fetch user’s staked amount
         const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        document.getElementById('stakedAmount').innerText = 
-            `Staked: ${web3.utils.fromWei(stakeInfo.amount, 'ether')} Y2K`;
+        const stakedAmount = web3.utils.fromWei(stakeInfo.amount, 'ether');
+        
+        document.getElementById('stakedAmount').textContent = stakedAmount;
+        
+        const rewardRate = await stakingContract.methods.rewardRate().call();
+        const apy = calculateAPY(rewardRate);
+        document.getElementById('apyPercentage').textContent = apy.toFixed(2);
 
-        // Fetch POGS Balance
-        const pogsBalance = await pogsContract.methods.balanceOf(userAccount).call();
-        document.getElementById('pogsBalance').innerText = 
-            `POGS Balance: ${web3.utils.fromWei(pogsBalance, 'ether')} POGS`;
+        const totalStaked = await stakingContract.methods.totalStaked().call();
+        document.getElementById('totalStaked').textContent = 
+            web3.utils.fromWei(totalStaked, 'ether');
 
-        // Fetch Auto-Compounding Status
-        const autoCompoundingStatus = await stakingContract.methods.autoCompoundingEnabled().call();
-        document.getElementById('autoCompoundingToggle').checked = autoCompoundingStatus;
+        const earnedRewards = await stakingContract.methods.earned(userAccount).call();
+        document.getElementById('earnedRewards').textContent = 
+            web3.utils.fromWei(earnedRewards, 'ether');
+
+        const autoCompoundStatus = document.getElementById('autoCompoundStatus');
+        autoCompoundStatus.textContent = 
+            document.getElementById('autoCompoundToggle').checked ? 'ON' : 'OFF';
+
+        const referralLink = `${window.location.origin}?ref=${userAccount}`;
+        document.getElementById('referralLink').value = referralLink;
+
     } catch (error) {
         console.error("Error updating UI:", error);
+        alert("Error updating information. Please try again.");
     }
 }
 
-// Stake Y2K Function
 async function stakeY2K() {
-    if (!userAccount) return;
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
 
     const amount = document.getElementById('stakeAmount').value;
     if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to stake.");
+        alert("Please enter a valid amount to stake");
         return;
     }
 
     try {
-        await stakingContract.methods.stake(web3.utils.toWei(amount, 'ether')).send({ from: userAccount });
-        updateUI();
+        const amountWei = web3.utils.toWei(amount, 'ether');
+        
+        await pogsContract.methods.approve(stakingContractAddress, amountWei)
+            .send({ from: userAccount });
+        
+        await stakingContract.methods.stake(amountWei)
+            .send({ from: userAccount });
+        
+        document.getElementById('stakeAmount').value = '';
+        await updateUI();
+        alert("Staking successful!");
     } catch (error) {
         console.error("Staking failed:", error);
+        alert("Staking failed. Please try again.");
     }
 }
 
-// Unstake Y2K Function
 async function unstakeY2K() {
-    if (!userAccount) return;
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
 
     const amount = document.getElementById('unstakeAmount').value;
     if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to unstake.");
+        alert("Please enter a valid amount to unstake");
         return;
     }
 
     try {
-        await stakingContract.methods.unstake(web3.utils.toWei(amount, 'ether')).send({ from: userAccount });
-        updateUI();
+        const amountWei = web3.utils.toWei(amount, 'ether');
+        await stakingContract.methods.unstake(amountWei)
+            .send({ from: userAccount });
+        
+        document.getElementById('unstakeAmount').value = '';
+        await updateUI();
+        alert("Unstaking successful!");
     } catch (error) {
         console.error("Unstaking failed:", error);
+        alert("Unstaking failed. Please try again.");
     }
 }
 
-// Claim Rewards Function
 async function claimRewards() {
-    if (!userAccount) return;
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
 
     try {
-        await stakingContract.methods.claimReward().send({ from: userAccount });
-        updateUI();
+        await stakingContract.methods.claimReward()
+            .send({ from: userAccount });
+        await updateUI();
+        alert("Rewards claimed successfully!");
     } catch (error) {
         console.error("Claiming rewards failed:", error);
+        alert("Failed to claim rewards. Please try again.");
     }
 }
 
-// Toggle Auto-Compounding Function
 async function toggleAutoCompounding() {
-    if (!userAccount) return;
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
 
-    const status = document.getElementById('autoCompoundingToggle').checked;
+    const status = document.getElementById('autoCompoundToggle').checked;
 
     try {
-        await stakingContract.methods.toggleAutoCompounding(status).send({ from: userAccount });
-        updateUI();
+        await stakingContract.methods.toggleAutoCompounding(status)
+            .send({ from: userAccount });
+        document.getElementById('autoCompoundStatus').textContent = status ? 'ON' : 'OFF';
+        await updateUI();
     } catch (error) {
-        console.error("Toggling auto-compounding failed:", error);
+        console.error("Toggle auto-compounding failed:", error);
+        document.getElementById('autoCompoundToggle').checked = !status;
+        alert("Failed to toggle auto-compounding. Please try again.");
     }
 }
 
-// Event Listeners for Buttons
-document.getElementById('connectWalletButton').addEventListener('click', connectWallet);
-document.getElementById('stakeButton').addEventListener('click', stakeY2K);
-document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
-document.getElementById('claimRewardsButton').addEventListener('click', claimRewards);
-document.getElementById('autoCompoundingToggle').addEventListener('change', toggleAutoCompounding);
+function calculateAPY(rewardRate) {
+    return (rewardRate / 1e18) * 365 * 100;
+}
+
+function copyReferralLink() {
+    const referralLink = document.getElementById('referralLink');
+    referralLink.select();
+    document.execCommand('copy');
+    alert('Referral link copied to clipboard!');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeWeb3();
+    
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('stakeButton').addEventListener('click', stakeY2K);
+    document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
+    document.getElementById('claimRewards').addEventListener('click', claimRewards);
+    document.getElementById('autoCompoundToggle').addEventListener('change', toggleAutoCompounding);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const referrer = urlParams.get('ref');
+    if (referrer) {
+        localStorage.setItem('referrer', referrer);
+    }
+});
