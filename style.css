@@ -1,0 +1,127 @@
+/* General Styles */
+body {
+    font-family: 'Orbitron', sans-serif;
+    background: #0a0a0a;
+    color: #e2e8f0;
+    text-align: center;
+    padding: 20px;
+}
+
+header {
+    background: rgba(10, 10, 10, 0.9);
+    padding: 15px;
+    border-bottom: 2px solid #00e6e6;
+}
+
+h1, h2 {
+    color: #00e6e6;
+    text-shadow: 0 0 10px rgba(0, 230, 230, 0.5);
+}
+
+/* Staking Section */
+#staking {
+    background: #111;
+    padding: 20px;
+    margin: 15px auto;
+    border-radius: 10px;
+    max-width: 500px;
+    border: 1px solid #222;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Buttons */
+button {
+    background: #00e6e6;
+    color: black;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.3s ease-in-out;
+}
+
+button:hover {
+    background: #009999;
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(0, 230, 230, 0.5);
+}
+
+/* Auto-Compounding Toggle */
+#autoCompounding {
+    background: #111;
+    padding: 20px;
+    margin: 15px auto;
+    border-radius: 10px;
+    max-width: 500px;
+    border: 1px solid #222;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ff007f;
+    transition: 0.4s;
+    border-radius: 26px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #00e6e6;
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+/* Referral Section */
+#referrals {
+    background: #111;
+    padding: 20px;
+    margin: 15px auto;
+    border-radius: 10px;
+    max-width: 500px;
+    border: 1px solid #222;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Lottery Section */
+#lottery {
+    background: #111;
+    padding: 20px;
+    margin: 15px auto;
+    border-radius: 10px;
+    max-width: 500px;
+    border: 1px solid #222;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
