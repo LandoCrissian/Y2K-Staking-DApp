@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Y2K Staking DApp</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
+    <script src="config.js"></script>
+    <script defer src="script.js"></script>
+</head>
+<body>
+    <header>
+        <h1>Y2K Staking DApp</h1>
+        <button id="connectWallet">Connect Wallet</button>
+    </header>
+    <main>
+        <!-- Staking Dashboard -->
+        <section id="staking">
+            <h2>Staking Dashboard</h2>
+            <p>Currently Staked: <span id="stakedAmount">0</span> Y2K</p>
+            <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
+            <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
+            <p>💹 Total Y2K Staked: <span id="totalStaked">0</span> Y2K</p>
+
+            <div class="staking-actions">
+                <input type="number" id="stakeAmount" placeholder="Enter Y2K amount">
+                <button id="stakeButton">Stake</button>
+
+                <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake">
+                <button id="unstakeButton">Unstake</button>
+
+                <p>POGs Earned: <span id="earnedRewards">0</span></p>
+                <button id="claimRewards">Claim Rewards</button>
+            </div>
+        </section>
+
+        <!-- Auto-Compounding Section -->
+        <section id="autoCompounding">
+            <h2>🔄 Auto-Compounding</h2>
+            <label class="switch">
+                <input type="checkbox" id="autoCompoundToggle">
+                <span class="slider"></span>
+            </label>
+            <p>Status: <span id="autoCompoundStatus">OFF</span></p>
+        </section>
+
+        <!-- Lottery Section -->
+        <section id="lottery">
+            <h2>🎟️ Lottery</h2>
+            <p>🔹 Participants: <span id="lotteryParticipants">0</span></p>
+            <p>💰 Prize Pool: <span id="lotteryPrizePool">0</span> POGs</p>
+            <p>⏳ Next Draw In: <span id="lotteryCountdown">00:00:00</span></p>
+            <h3>🏆 Recent Winner: <span id="lotteryWinner">N/A</span></h3>
+        </section>
+
+        <!-- Referral Leaderboard -->
+        <section id="referrals">
+            <h2>👥 Referral Program</h2>
+            <p>Your Referral Link:</p>
+            <input type="text" id="referralLink" readonly>
+            <button onclick="copyReferralLink()">Copy</button>
+            <p>🏅 Referral Rewards Earned: <span id="referralRewards">0</span> POGs</p>
+            <h3>🎖️ Top Referrers:</h3>
+            <ul id="referralLeaderboard"></ul>
+        </section>
+
+        <!-- Staking Benefits -->
+        <section id="stakingBenefits">
+            <h2>💡 Why Stake?</h2>
+            <p>✅ Earn passive income in **POGs**.</p>
+            <p>✅ Participate in **monthly lottery rewards**.</p>
+            <p>✅ Get higher APY with **longer staking durations**.</p>
+            <p>✅ Referral bonuses for **bringing in new stakers**.</p>
+        </section>
+    </main>
+</body>
+</html>
