@@ -18,6 +18,13 @@ header {
     z-index: 100;
 }
 
+.wallet-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 h1, h2 {
     color: #00e6e6;
     text-shadow: 0 0 10px rgba(0, 230, 230, 0.5);
@@ -78,6 +85,19 @@ button.connected {
 
 button.connected:hover {
     background: #008800;
+}
+
+#disconnectWallet {
+    background: #ff4444;
+}
+
+#disconnectWallet:hover {
+    background: #cc0000;
+}
+
+#y2kBalance {
+    color: #00e6e6;
+    font-weight: bold;
 }
 
 /* Auto-Compounding Toggle */
@@ -200,5 +220,9 @@ input:checked + .slider:before {
 
     h2 {
         font-size: 1.2rem;
+    }
+
+    .wallet-buttons {
+        flex-direction: column;
     }
 }
