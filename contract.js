@@ -69,16 +69,3 @@ const contractConfig = {
          "name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
     ]
 };
-
-window.contractConfig = contractConfig;
-```
-
-Would you like me to share the complete `script.js` as well? The `contract.js` file now includes:
-
-1. Staking Contract ABI and address
-2. POGS Token Contract ABI and address
-3. Y2K Token Contract ABI (you'll need to add your Y2K token address)
-4. All necessary functions for interacting with the contracts
-5. Full ERC20 standard functions for both tokens
-
-Remember to replace `"YOUR_Y2K_TOKEN_ADDRESS"` with your actual Y2K token contract address.
