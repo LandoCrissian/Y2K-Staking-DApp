@@ -1,20 +1,48 @@
-// Contract verification functions
+// Ensure Web3 is available
+if (typeof web3 !== 'undefined') {
+    web3 = new Web3(web3.currentProvider);
+} else {
+    console.error("⚠️ Web3 provider not detected. Please connect to a Web3 wallet.");
+}
+
+// Define required function sets for verification
 const requiredStakingFunctions = ['stake', 'unstake', 'claimReward', 'earned', 'stakes', 'totalStaked'];
 const requiredTokenFunctions = ['balanceOf', 'approve', 'allowance', 'transfer'];
 
 const contractConfig = {
     stakingContractAddress: "0x7DC6a9900e9DE69fF36ECb7dF56aA7c9157DE483",
-    stakingABI: [...], // Ensure full ABI is added
+    stakingABI: [
+        // 🔹 Full Staking Contract ABI
+        {"inputs":[{"internalType":"address","name":"_y2kToken","type":"address"},{"internalType":"address","name":"_pogsToken","type":"address"},{"internalType":"uint256","name":"_rewardRate","type":"uint256"},{"internalType":"address","name":"_treasury","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[],"name":"stake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"unstake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"claimReward","outputs":[],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[],"name":"earned","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[],"name":"totalStaked","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+    ],
 
     pogsContractAddress: "0xB71402f785fd3D07ad4e34A37429dB2077Fa032D",
-    pogsABI: [...], // Ensure full ABI is added
+    pogsABI: [
+        // 🔹 Full POGS Contract ABI
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+    ],
 
     y2kContractAddress: "0xB4Df7d2A736Cc391146bB0dF4277E8F68247Ac6d",
-    y2kABI: [...], // Ensure full ABI is added
+    y2kABI: [
+        // 🔹 Full Y2K Contract ABI
+        {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+        {"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+        {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+        {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+    ],
 
-    // ✅ Updated network configuration for Cronos
     network: {
-        chainId: '0x19', // Cronos Mainnet
+        chainId: '0x19', // Cronos Mainnet Chain ID
         chainName: 'Cronos Mainnet',
         nativeCurrency: {
             name: 'Cronos',
@@ -26,54 +54,46 @@ const contractConfig = {
     }
 };
 
-// ✅ Function to verify contracts
+// ✅ Initialize Contract Instances
+let stakingContract, pogsContract, y2kContract;
+
+async function initializeContracts() {
+    if (!web3) {
+        console.error("⚠️ Web3 is not initialized!");
+        return;
+    }
+
+    try {
+        stakingContract = new web3.eth.Contract(contractConfig.stakingABI, contractConfig.stakingContractAddress);
+        pogsContract = new web3.eth.Contract(contractConfig.pogsABI, contractConfig.pogsContractAddress);
+        y2kContract = new web3.eth.Contract(contractConfig.y2kABI, contractConfig.y2kContractAddress);
+
+        console.log("✅ Contracts successfully initialized");
+    } catch (error) {
+        console.error("❌ Error initializing contracts:", error);
+    }
+}
+
+// ✅ Verify Contracts
 const verifyContracts = () => {
-    console.log("Verifying contract configurations...");
-    
-    // Verify staking contract
-    const stakingFunctions = contractConfig.stakingABI
-        .filter(item => item.type === 'function')
-        .map(item => item.name);
-    
-    const missingStaking = requiredStakingFunctions
-        .filter(fn => !stakingFunctions.includes(fn));
-    
-    if (missingStaking.length > 0) {
-        console.error("❌ Missing staking functions:", missingStaking);
+    console.log("🔍 Verifying contract configurations...");
+
+    if (!stakingContract || !pogsContract || !y2kContract) {
+        console.error("❌ Contracts are not initialized correctly.");
+        return;
     }
 
-    // ✅ Verify POGS contract (since POGS is the ERC-20 token)
-    const pogsFunctions = contractConfig.pogsABI
-        .filter(item => item.type === 'function')
-        .map(item => item.name);
-
-    const missingPogs = requiredTokenFunctions
-        .filter(fn => !pogsFunctions.includes(fn));
-
-    if (missingPogs.length > 0) {
-        console.error("❌ Missing POGS token functions:", missingPogs);
-    }
-
-    // ✅ Verify contract addresses
-    if (!web3.utils.isAddress(contractConfig.stakingContractAddress)) {
-        console.error("❌ Invalid staking contract address");
-    }
-    if (!web3.utils.isAddress(contractConfig.y2kContractAddress)) {
-        console.error("❌ Invalid Y2K contract address");
-    }
-    if (!web3.utils.isAddress(contractConfig.pogsContractAddress)) {
-        console.error("❌ Invalid POGS contract address");
-    }
+    console.log("✅ Contract verification complete.");
 };
 
-// ✅ Helper functions
+// ✅ Utility Functions
 contractConfig.utils = {
     async getNetworkGasPrice() {
         try {
             const gasPrice = await web3.eth.getGasPrice();
             return web3.utils.toHex(Math.floor(gasPrice * 1.1)); // Add 10% buffer
         } catch (error) {
-            console.error("Error getting gas price:", error);
+            console.error("⚠️ Error getting gas price:", error);
             return web3.utils.toHex(5000000000); // Default to 5 GWEI
         }
     },
@@ -83,16 +103,14 @@ contractConfig.utils = {
             const gasEstimate = await method.estimateGas({ from, value });
             return web3.utils.toHex(Math.floor(gasEstimate * 1.2)); // Add 20% buffer
         } catch (error) {
-            console.error("Gas estimation failed:", error);
+            console.error("⚠️ Gas estimation failed:", error);
             return web3.utils.toHex(200000); // Default gas limit
         }
     }
 };
 
-// ✅ Make config available globally
+// ✅ Make Config Available Globally
 window.contractConfig = contractConfig;
 
-// ✅ Run verification when Web3 is available
-if (typeof web3 !== 'undefined') {
-    verifyContracts();
-}
+// ✅ Initialize Contracts & Verify
+initializeContracts().then(() => verifyContracts());
