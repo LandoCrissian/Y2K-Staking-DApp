@@ -125,7 +125,111 @@ async function updateUI() {
     }
 }
 
-// ... rest of your functions remain the same ...
+async function stakeY2K() {
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
+
+    const amount = document.getElementById('stakeAmount').value;
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount to stake");
+        return;
+    }
+
+    try {
+        const amountWei = web3.utils.toWei(amount, 'ether');
+        
+        // First approve Y2K transfer
+        await y2kContract.methods.approve(stakingContractAddress, amountWei)
+            .send({ from: userAccount });
+        
+        // Then stake
+        await stakingContract.methods.stake(amountWei)
+            .send({ from: userAccount });
+        
+        document.getElementById('stakeAmount').value = '';
+        await updateUI();
+        alert("Staking successful!");
+    } catch (error) {
+        console.error("Staking failed:", error);
+        alert("Staking failed. Please try again.");
+    }
+}
+
+async function unstakeY2K() {
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
+
+    const amount = document.getElementById('unstakeAmount').value;
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount to unstake");
+        return;
+    }
+
+    try {
+        const amountWei = web3.utils.toWei(amount, 'ether');
+        await stakingContract.methods.unstake(amountWei)
+            .send({ from: userAccount });
+        
+        document.getElementById('unstakeAmount').value = '';
+        await updateUI();
+        alert("Unstaking successful!");
+    } catch (error) {
+        console.error("Unstaking failed:", error);
+        alert("Unstaking failed. Please try again.");
+    }
+}
+
+async function claimRewards() {
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
+
+    try {
+        await stakingContract.methods.claimReward()
+            .send({ from: userAccount });
+        await updateUI();
+        alert("Rewards claimed successfully!");
+    } catch (error) {
+        console.error("Claiming rewards failed:", error);
+        alert("Failed to claim rewards. Please try again.");
+    }
+}
+
+async function toggleAutoCompounding() {
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
+
+    const status = document.getElementById('autoCompoundToggle').checked;
+
+    try {
+        await stakingContract.methods.toggleAutoCompounding(status)
+            .send({ from: userAccount });
+        document.getElementById('autoCompoundStatus').textContent = status ? 'ON' : 'OFF';
+        await updateUI();
+    } catch (error) {
+        console.error("Toggle auto-compounding failed:", error);
+        document.getElementById('autoCompoundToggle').checked = !status;
+        alert("Failed to toggle auto-compounding. Please try again.");
+    }
+}
+
+function calculateAPY(rewardRate) {
+    return (rewardRate / 1e18) * 365 * 100;
+}
+
+function copyReferralLink() {
+    const referralLink = document.getElementById('referralLink');
+    referralLink.select();
+    document.execCommand('copy');
+    alert('Referral link copied to clipboard!');
+}
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
