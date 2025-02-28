@@ -44,7 +44,7 @@ const contractConfig = {
          "name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ],
 
-    y2kContractAddress: "YOUR_Y2K_TOKEN_ADDRESS", // Replace with actual Y2K token address
+    y2kContractAddress: "0xB4Df7d2A736Cc391146bB0dF4277E8F68247Ac6d", // Replace with actual Y2K token address
     y2kABI: [
         {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
         {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
