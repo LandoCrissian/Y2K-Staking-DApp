@@ -1,6 +1,3 @@
-I'll share the full `contract.js`. Please note we were cut off. Here's the complete file:
-
-```javascript
 const contractConfig = {
     stakingContractAddress: "0x7DC6a9900e9DE69fF36ECb7dF56aA7c9157DE483",
     stakingABI: [
