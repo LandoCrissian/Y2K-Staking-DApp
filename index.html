@@ -6,9 +6,6 @@
     <title>Y2K Staking DApp</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/web3/dist/web3.min.js"></script>
-    <script src="contract.js"></script>
-    <script defer src="script.js"></script>
 </head>
 <body>
     <header>
@@ -74,5 +71,16 @@
             <p>✅ Referral bonuses for <strong>bringing in new stakers</strong>.</p>
         </section>
     </main>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="contract.js"></script>
+    <script>
+        // Ensure contract config is loaded
+        if (!window.contractConfig) {
+            console.error("Contract config not loaded!");
+        }
+    </script>
+    <script src="script.js"></script>
 </body>
 </html>
