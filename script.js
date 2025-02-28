@@ -6,18 +6,58 @@ const { stakingContractAddress, stakingABI, pogsContractAddress, pogsABI } = win
 
 async function initializeWeb3() {
     if (typeof window.ethereum !== 'undefined') {
-        web3 = new Web3(window.ethereum);
-        stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress);
-        pogsContract = new web3.eth.Contract(pogsABI, pogsContractAddress);
-        
-        window.ethereum.on('accountsChanged', function (accounts) {
-            userAccount = accounts[0];
-            updateUI();
-        });
+        try {
+            web3 = new Web3(window.ethereum);
+            stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress);
+            pogsContract = new web3.eth.Contract(pogsABI, pogsContractAddress);
+            
+            // Check if already connected
+            const accounts = await web3.eth.getAccounts();
+            if (accounts.length > 0) {
+                userAccount = accounts[0];
+                updateWalletButton();
+                await updateUI();
+            }
 
-        window.ethereum.on('chainChanged', function () {
-            window.location.reload();
-        });
+            // Listen for account changes
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', () => {
+                window.location.reload();
+            });
+            window.ethereum.on('disconnect', handleDisconnect);
+
+        } catch (error) {
+            console.error("Failed to initialize Web3:", error);
+        }
+    }
+}
+
+function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        // Handle disconnection
+        userAccount = null;
+        updateWalletButton();
+    } else if (accounts[0] !== userAccount) {
+        userAccount = accounts[0];
+        updateWalletButton();
+        updateUI();
+    }
+}
+
+function handleDisconnect() {
+    userAccount = null;
+    updateWalletButton();
+    localStorage.removeItem('walletConnected');
+}
+
+function updateWalletButton() {
+    const connectButton = document.getElementById('connectWallet');
+    if (userAccount) {
+        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+        connectButton.classList.add('connected');
+    } else {
+        connectButton.textContent = 'Connect Wallet';
+        connectButton.classList.remove('connected');
     }
 }
 
@@ -27,13 +67,18 @@ async function connectWallet() {
             throw new Error("Please install MetaMask or a compatible wallet.");
         }
 
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        // Request accounts access
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+        });
+
         userAccount = accounts[0];
-        
-        document.getElementById('connectWallet').textContent = 
-            userAccount.substring(0, 6) + '...' + userAccount.substring(38);
-        
+        updateWalletButton();
         await updateUI();
+
+        // Add to localStorage to persist connection
+        localStorage.setItem('walletConnected', 'true');
+
         return true;
     } catch (error) {
         console.error("Connection error:", error);
@@ -72,7 +117,6 @@ async function updateUI() {
 
     } catch (error) {
         console.error("Error updating UI:", error);
-        alert("Error updating information. Please try again.");
     }
 }
 
@@ -91,9 +135,11 @@ async function stakeY2K() {
     try {
         const amountWei = web3.utils.toWei(amount, 'ether');
         
+        // First approve the transfer
         await pogsContract.methods.approve(stakingContractAddress, amountWei)
             .send({ from: userAccount });
         
+        // Then stake
         await stakingContract.methods.stake(amountWei)
             .send({ from: userAccount });
         
@@ -180,15 +226,28 @@ function copyReferralLink() {
     alert('Referral link copied to clipboard!');
 }
 
+// Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     await initializeWeb3();
     
+    // Check if wallet was previously connected
+    if (localStorage.getItem('walletConnected') === 'true') {
+        try {
+            await connectWallet();
+        } catch (error) {
+            console.error("Failed to reconnect wallet:", error);
+            localStorage.removeItem('walletConnected');
+        }
+    }
+    
+    // Add event listeners
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('stakeButton').addEventListener('click', stakeY2K);
     document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
     document.getElementById('claimRewards').addEventListener('click', claimRewards);
     document.getElementById('autoCompoundToggle').addEventListener('change', toggleAutoCompounding);
 
+    // Check for referral
     const urlParams = new URLSearchParams(window.location.search);
     const referrer = urlParams.get('ref');
     if (referrer) {
