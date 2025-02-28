@@ -13,11 +13,15 @@
 <body>
     <header>
         <h1>Y2K Staking DApp</h1>
-        <button id="connectWallet">Connect Wallet</button>
+        <div class="wallet-buttons">
+            <button id="connectWallet">Connect Wallet</button>
+            <button id="disconnectWallet" style="display: none;">Disconnect</button>
+        </div>
     </header>
     <main>
         <section id="staking">
             <h2>Staking Dashboard</h2>
+            <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K</p>
             <p>Currently Staked: <span id="stakedAmount">0</span> Y2K</p>
             <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
             <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
