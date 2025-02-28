@@ -1,13 +1,32 @@
+console.log("Script starting...");
+
+// Check if Web3 is available
+if (typeof Web3 === 'undefined') {
+    console.error("Web3 is not loaded!");
+}
+
+// Check if contract config is available
+if (typeof window.contractConfig === 'undefined') {
+    console.error("Contract config is not loaded!");
+}
+
 let web3;
 let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount;
-const { stakingContractAddress, stakingABI, pogsContractAddress, pogsABI, y2kContractAddress, y2kABI } = window.contractConfig;
+
+try {
+    const { stakingContractAddress, stakingABI, pogsContractAddress, pogsABI, y2kContractAddress, y2kABI } = window.contractConfig;
+} catch (error) {
+    console.error("Error accessing contract config:", error);
+}
 
 async function initializeWeb3() {
+    console.log("Initializing Web3...");
     if (typeof window.ethereum !== 'undefined') {
         try {
+            console.log("MetaMask is installed");
             web3 = new Web3(window.ethereum);
             stakingContract = new web3.eth.Contract(stakingABI, stakingContractAddress);
             pogsContract = new web3.eth.Contract(pogsABI, pogsContractAddress);
@@ -23,10 +42,14 @@ async function initializeWeb3() {
         } catch (error) {
             console.error("Failed to initialize Web3:", error);
         }
+    } else {
+        console.log("MetaMask is not installed");
+        alert("Please install MetaMask to use this dApp");
     }
 }
 
 function handleAccountsChanged(accounts) {
+    console.log("Accounts changed:", accounts);
     if (accounts.length === 0) {
         disconnectWallet();
     } else if (accounts[0] !== userAccount) {
@@ -37,6 +60,7 @@ function handleAccountsChanged(accounts) {
 }
 
 function handleDisconnect() {
+    console.log("Wallet disconnected");
     disconnectWallet();
 }
 
@@ -70,26 +94,37 @@ function updateWalletButton() {
 }
 
 async function connectWallet() {
+    console.log("Connect wallet clicked");
     try {
         if (!window.ethereum) {
-            throw new Error("Please install MetaMask or a compatible wallet.");
+            console.error("MetaMask not found");
+            alert("Please install MetaMask!");
+            return;
         }
 
-        // Request accounts access
-        const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
+        console.log("Requesting accounts...");
+        const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts'
         });
+
+        console.log("Accounts:", accounts);
 
         if (accounts.length > 0) {
             userAccount = accounts[0];
+            console.log("Connected to:", userAccount);
             updateWalletButton();
             await updateUI();
-            console.log("Wallet connected:", userAccount);
+        } else {
+            console.error("No accounts found");
         }
 
     } catch (error) {
         console.error("Connection error:", error);
-        alert(error.message);
+        if (error.code === 4001) {
+            alert("Please connect your wallet to continue.");
+        } else {
+            alert("Error connecting wallet: " + error.message);
+        }
     }
 }
 
@@ -233,11 +268,24 @@ function copyReferralLink() {
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM loaded, initializing...");
     await initializeWeb3();
     
     // Add event listeners
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+    const connectButton = document.getElementById('connectWallet');
+    if (connectButton) {
+        console.log("Adding connect button listener");
+        connectButton.addEventListener('click', connectWallet);
+    } else {
+        console.error("Connect button not found!");
+    }
+
+    const disconnectButton = document.getElementById('disconnectWallet');
+    if (disconnectButton) {
+        console.log("Adding disconnect button listener");
+        disconnectButton.addEventListener('click', disconnectWallet);
+    }
+
     document.getElementById('stakeButton').addEventListener('click', stakeY2K);
     document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
     document.getElementById('claimRewards').addEventListener('click', claimRewards);
