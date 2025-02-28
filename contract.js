@@ -44,7 +44,7 @@ const contractConfig = {
          "name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ],
 
-    y2kContractAddress: "0xB4Df7d2A736Cc391146bB0dF4277E8F68247Ac6d", // Replace with actual Y2K token address
+    y2kContractAddress: "0xB4Df7d2A736Cc391146bB0dF4277E8F68247Ac6d",
     y2kABI: [
         {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
         {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
@@ -60,12 +60,8 @@ const contractConfig = {
          "name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
         {"inputs":[{"internalType":"address","name":"owner","type":"address"},
                    {"internalType":"address","name":"spender","type":"address"}],
-         "name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-        {"inputs":[{"internalType":"address","name":"spender","type":"address"},
-                   {"internalType":"uint256","name":"addedValue","type":"uint256"}],
-         "name":"increaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-        {"inputs":[{"internalType":"address","name":"spender","type":"address"},
-                   {"internalType":"uint256","name":"subtractedValue","type":"uint256"}],
-         "name":"decreaseAllowance","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}
+         "name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
     ]
 };
+
+window.contractConfig = contractConfig;
