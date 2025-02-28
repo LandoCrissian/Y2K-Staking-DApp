@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Y2K Staking DApp - Stake Y2K tokens and earn POGs rewards">
     <title>Y2K Staking DApp</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
@@ -18,21 +19,33 @@
     <main>
         <section id="staking">
             <h2>Staking Dashboard</h2>
-            <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K</p>
-            <p>Currently Staked: <span id="stakedAmount">0</span> Y2K</p>
+            <div class="balance-info">
+                <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K
+                    <button id="maxStake" class="max-button">MAX</button>
+                </p>
+                <p>Currently Staked: <span id="stakedAmount">0</span> Y2K
+                    <button id="maxUnstake" class="max-button">MAX</button>
+                </p>
+            </div>
             <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
             <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
             <p>💹 Total Y2K Staked: <span id="totalStaked">0</span> Y2K</p>
 
             <div class="staking-actions">
-                <input type="number" id="stakeAmount" placeholder="Enter Y2K amount">
-                <button id="stakeButton">Stake</button>
+                <div class="input-wrapper">
+                    <input type="number" id="stakeAmount" placeholder="Enter Y2K amount" min="0" step="any">
+                    <button id="stakeButton">Stake</button>
+                </div>
 
-                <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake">
-                <button id="unstakeButton">Unstake</button>
+                <div class="input-wrapper">
+                    <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake" min="0" step="any">
+                    <button id="unstakeButton">Unstake</button>
+                </div>
 
-                <p>POGs Earned: <span id="earnedRewards">0</span></p>
-                <button id="claimRewards">Claim Rewards</button>
+                <div class="rewards-section">
+                    <p>POGs Earned: <span id="earnedRewards">0</span></p>
+                    <button id="claimRewards">Claim Rewards</button>
+                </div>
             </div>
         </section>
 
@@ -72,15 +85,21 @@
         </section>
     </main>
 
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p id="loadingMessage">Processing Transaction...</p>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
-    <script src="contract.js"></script>
     <script>
-        // Ensure contract config is loaded
-        if (!window.contractConfig) {
-            console.error("Contract config not loaded!");
+        // Check Web3 availability
+        if (typeof Web3 === 'undefined') {
+            console.error("Web3 not loaded!");
         }
     </script>
-    <script src="script.js"></script>
+    <script src="contract.js"></script>
+    <script defer src="script.js"></script>
 </body>
 </html>
