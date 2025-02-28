@@ -71,6 +71,15 @@ button:hover {
     box-shadow: 0 0 15px rgba(0, 230, 230, 0.5);
 }
 
+button.connected {
+    background: #00aa00;
+    color: white;
+}
+
+button.connected:hover {
+    background: #008800;
+}
+
 /* Auto-Compounding Toggle */
 #autoCompounding {
     background: #111;
