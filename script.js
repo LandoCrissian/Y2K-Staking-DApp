@@ -39,22 +39,30 @@ async function initializeWeb3() {
         if (!config) {
             throw new Error("Contract configuration not loaded");
         }
+        console.log("Contract config loaded:", config);
 
         if (typeof window.ethereum === 'undefined') {
             throw new Error("Please install MetaMask to use this dApp.");
         }
 
         web3 = new Web3(window.ethereum);
+        console.log("Web3 initialized:", web3.version);
         
         // Initialize contracts using config
         const contracts = await config.initializeContracts(web3);
         if (!contracts) {
             throw new Error("Failed to initialize contracts");
         }
+        console.log("Contracts initialized:", contracts);
 
         stakingContract = contracts.staking;
         pogsContract = contracts.pogs;
         y2kContract = contracts.y2k;
+
+        // Verify contracts
+        console.log("Staking Contract:", stakingContract._address);
+        console.log("POGS Contract:", pogsContract._address);
+        console.log("Y2K Contract:", y2kContract._address);
 
         // Setup event listeners
         window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -69,6 +77,131 @@ async function initializeWeb3() {
     }
 }
 
+async function connectWallet() {
+    try {
+        if (!window.ethereum) {
+            throw new Error("Please install MetaMask!");
+        }
+
+        console.log("Checking network...");
+        const config = await waitForContractConfig();
+        if (!config) {
+            throw new Error("DApp not properly initialized");
+        }
+
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        console.log("Current Chain ID:", chainId);
+
+        await config.networkUtils.verifyNetwork(window.ethereum);
+        console.log("Network verified");
+
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+        });
+        console.log("Accounts received:", accounts);
+
+        if (accounts.length > 0) {
+            const message = "Welcome to Y2K Staking! Sign to verify your wallet.";
+            try {
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, accounts[0]],
+                });
+                console.log("Signature verified:", signature);
+                
+                userAccount = accounts[0];
+                console.log("User account set:", userAccount);
+                
+                updateWalletButton();
+                console.log("Wallet button updated");
+                
+                console.log("Starting UI update...");
+                await updateUI();
+                console.log("UI update completed");
+            } catch (signError) {
+                console.error("Signature rejected:", signError);
+                alert("Please sign the message to connect your wallet");
+            }
+        }
+    } catch (error) {
+        console.error("Connection error:", error);
+        alert(window.contractConfig?.utils.getErrorMessage(error) || error.message);
+    }
+}
+
+async function updateUI() {
+    if (!userAccount) {
+        console.log("No user account, skipping UI update");
+        return;
+    }
+
+    try {
+        console.log("Starting UI update for account:", userAccount);
+        showLoading("Updating dashboard...");
+
+        // Verify contracts
+        console.log("Verifying contracts...");
+        console.log("Y2K Contract:", y2kContract?._address);
+        console.log("Staking Contract:", stakingContract?._address);
+
+        // Test each contract call individually
+        try {
+            const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
+            console.log("Y2K Balance retrieved:", y2kBalance);
+        } catch (e) {
+            console.error("Error getting Y2K balance:", e);
+        }
+
+        try {
+            const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            console.log("Stake info retrieved:", stakeInfo);
+        } catch (e) {
+            console.error("Error getting stake info:", e);
+        }
+
+        // Continue with the rest of the UI update...
+        const [
+            y2kBalance,
+            stakeInfo,
+            totalStaked,
+            earnedRewards,
+            autoCompoundStatus
+        ] = await Promise.all([
+            y2kContract.methods.balanceOf(userAccount).call(),
+            stakingContract.methods.stakes(userAccount).call(),
+            stakingContract.methods.totalStaked().call(),
+            stakingContract.methods.earned(userAccount).call(),
+            stakingContract.methods.autoCompoundingEnabled().call()
+        ]);
+
+        console.log("All data retrieved:", {
+            y2kBalance,
+            stakeInfo,
+            totalStaked,
+            earnedRewards,
+            autoCompoundStatus
+        });
+
+        // Update UI elements
+        document.getElementById('y2kBalance').textContent = window.contractConfig.utils.formatAmount(y2kBalance);
+        document.getElementById('stakedAmount').textContent = window.contractConfig.utils.formatAmount(stakeInfo.amount);
+        document.getElementById('totalStaked').textContent = window.contractConfig.utils.formatAmount(totalStaked);
+        document.getElementById('earnedRewards').textContent = window.contractConfig.utils.formatAmount(earnedRewards);
+        
+        document.getElementById('autoCompoundToggle').checked = autoCompoundStatus;
+        document.getElementById('autoCompoundStatus').textContent = autoCompoundStatus ? 'ON' : 'OFF';
+
+        const referralLink = `${window.location.origin}?ref=${userAccount}`;
+        document.getElementById('referralLink').value = referralLink;
+
+        console.log("UI update completed successfully");
+        hideLoading();
+    } catch (error) {
+        console.error("Error updating UI:", error);
+        hideLoading();
+        alert("Failed to update dashboard. Check console for details.");
+    }
+}
 function handleChainChanged() {
     window.location.reload();
 }
