@@ -6,7 +6,7 @@ let web3;
 let stakingContract;
 let pogsContract;
 let y2kContract;
-let userAccount;
+let userAccount = null;
 let isWalletConnected = false; // Prevent auto-connecting
 
 // 🚀 **Wait for Contract Config**
@@ -57,10 +57,6 @@ async function initializeWeb3() {
         y2kContract = contracts.y2k;
 
         console.log("✅ Web3 and contracts initialized.");
-
-        // Only set up listeners once
-        setupWalletListeners();
-
     } catch (error) {
         console.error("❌ Initialization error:", error);
         alert(error.message || "Failed to initialize Web3.");
@@ -69,20 +65,21 @@ async function initializeWeb3() {
 
 // 🔗 **Connect Wallet with Signature Verification**
 async function connectWallet() {
-    if (isWalletConnected) return; // Prevent multiple triggers
+    if (!window.ethereum) {
+        alert("MetaMask is not detected! Please install MetaMask.");
+        return;
+    }
 
     try {
-        if (!window.ethereum) {
-            throw new Error("Please install MetaMask!");
-        }
-
         const config = await waitForContractConfig();
         if (!config) {
             throw new Error("DApp not properly initialized.");
         }
 
+        // Ensure we're on the correct network
         await config.networkUtils.verifyNetwork(window.ethereum);
 
+        // Request account access
         const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
@@ -235,4 +232,8 @@ function hideLoading() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
     await initializeWeb3();
+
+    // Add event listeners
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
 });
