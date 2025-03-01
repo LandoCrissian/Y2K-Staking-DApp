@@ -6,7 +6,7 @@ let web3;
 let stakingContract;
 let pogsContract;
 let y2kContract;
-let userAccount = null;
+let userAccount;
 let isWalletConnected = false; // Prevent auto-connecting
 
 // 🚀 **Wait for Contract Config**
@@ -57,6 +57,12 @@ async function initializeWeb3() {
         y2kContract = contracts.y2k;
 
         console.log("✅ Web3 and contracts initialized.");
+        console.log("🔹 Staking Contract:", stakingContract._address);
+        console.log("🔹 POGS Contract:", pogsContract._address);
+        console.log("🔹 Y2K Contract:", y2kContract._address);
+
+        setupWalletListeners();
+
     } catch (error) {
         console.error("❌ Initialization error:", error);
         alert(error.message || "Failed to initialize Web3.");
@@ -85,18 +91,18 @@ async function connectWallet() {
         });
 
         if (accounts.length > 0) {
-            const message = "Welcome to Y2K Staking! Sign to verify your wallet.";
+            userAccount = accounts[0];
+
+            const message = `Welcome to Y2K Staking!\n\nAddress: ${userAccount}\n\nSign to verify your wallet.`;
             try {
                 const signature = await window.ethereum.request({
                     method: 'personal_sign',
-                    params: [message, accounts[0]],
+                    params: [web3.utils.utf8ToHex(message), userAccount],
                 });
+
                 console.log("✅ Signature Verified:", signature);
-
-                // Show confirmation message
                 alert("Signature verified! Wallet successfully connected.");
-
-                userAccount = accounts[0];
+                
                 isWalletConnected = true;
                 updateWalletButton();
                 await updateUI();
@@ -180,51 +186,47 @@ async function updateUI() {
 
     try {
         showLoading("Updating dashboard...");
+        console.log("🔍 Fetching user staking info...");
 
-        const [
-            y2kBalance,
-            stakeInfo,
-            totalStaked,
-            earnedRewards,
-            autoCompoundStatus
-        ] = await Promise.all([
-            y2kContract.methods.balanceOf(userAccount).call(),
-            stakingContract.methods.stakes(userAccount).call(),
-            stakingContract.methods.totalStaked().call(),
-            stakingContract.methods.earned(userAccount).call(),
-            stakingContract.methods.autoCompoundingEnabled().call()
-        ]);
+        let y2kBalance, stakeInfo, totalStaked, earnedRewards, autoCompoundStatus;
 
-        document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
-        document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
-        document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
-        document.getElementById('earnedRewards').textContent = web3.utils.fromWei(earnedRewards);
-        
-        document.getElementById('autoCompoundToggle').checked = autoCompoundStatus;
-        document.getElementById('autoCompoundStatus').textContent = autoCompoundStatus ? 'ON' : 'OFF';
+        try {
+            y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
+            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
+            console.log("✅ Y2K Balance:", y2kBalance);
+        } catch (error) {
+            console.error("❌ Error fetching Y2K balance:", error);
+        }
+
+        try {
+            stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
+            console.log("✅ Staked Amount:", stakeInfo.amount);
+        } catch (error) {
+            console.error("❌ Error fetching staking info:", error);
+        }
+
+        try {
+            totalStaked = await stakingContract.methods.totalStaked().call();
+            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
+            console.log("✅ Total Y2K Staked:", totalStaked);
+        } catch (error) {
+            console.error("❌ Error fetching total staked:", error);
+        }
+
+        try {
+            earnedRewards = await stakingContract.methods.earned(userAccount).call();
+            document.getElementById('earnedRewards').textContent = web3.utils.fromWei(earnedRewards);
+            console.log("✅ Earned Rewards:", earnedRewards);
+        } catch (error) {
+            console.error("❌ Error fetching earned rewards:", error);
+        }
 
         hideLoading();
     } catch (error) {
-        console.error("❌ Error updating UI:", error);
+        console.error("❌ General UI update error:", error);
         hideLoading();
         alert("Failed to update dashboard.");
-    }
-}
-
-// 🔄 **Loading Functions**
-function showLoading(message) {
-    const overlay = document.getElementById('loadingOverlay');
-    const loadingMessage = document.getElementById('loadingMessage');
-    if (overlay && loadingMessage) {
-        loadingMessage.textContent = message;
-        overlay.style.display = 'flex';
-    }
-}
-
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
     }
 }
 
@@ -232,8 +234,4 @@ function hideLoading() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
     await initializeWeb3();
-
-    // Add event listeners
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
 });
