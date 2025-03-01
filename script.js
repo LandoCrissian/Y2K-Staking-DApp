@@ -106,7 +106,7 @@ async function connectWallet() {
         alert(error.message);
     }
 }
-}
+
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
@@ -116,42 +116,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
 
-   async function connectWallet() {
-    try {
-        if (!window.ethereum) {
-            throw new Error("Please install MetaMask!");
-        }
-
-        console.log("Requesting accounts...");
-        const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-        });
-        console.log("Accounts:", accounts);
-
-        if (accounts.length > 0) {
-            // Add signing request with custom message
-            const message = "Welcome to Y2K Staking! By signing this message, you confirm that you want to connect your wallet to our staking platform. This signature does not trigger any blockchain transaction or incur any fees.";
-            
-            try {
-                console.log("Requesting signature...");
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [message, accounts[0]],
-                });
-                console.log("Signature verified:", signature);
-                
-                userAccount = accounts[0];
-                updateWalletButton();
-                console.log("Connected:", userAccount);
-            } catch (signError) {
-                console.error("Signature rejected:", signError);
-                alert("Please sign the message to connect your wallet");
-                return;
-            }
-        }
-    } catch (error) {
-        console.error("Connection error:", error);
-        alert(error.message);
-    }
-} 
 });
