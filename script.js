@@ -187,78 +187,75 @@ async function updateUI() {
     }
 }
 /// ✅ **Stake Y2K Tokens**
-async function stakeTokens() {
+async function stakeY2K() {
+    if (!userAccount) {
+        alert("Connect your wallet first.");
+        return;
+    }
+
     const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to stake.");
+    if (!amount || amount <= 0) {
+        alert("Enter a valid Y2K amount to stake.");
         return;
     }
 
     try {
-        showLoading("Checking allowance...");
+        showLoading("Staking Y2K...");
 
-        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+        const weiAmount = web3.utils.toWei(amount, "ether");
 
-        // ✅ Step 1: Check Allowance
+        // **Ensure Approval Before Staking**
         const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
-        console.log("🔍 Current Allowance:", web3.utils.fromWei(allowance), "Y2K");
-
-        if (BigInt(allowance) < BigInt(amountInWei)) {
-            console.log("🚨 Insufficient Allowance. Approving...");
-            showLoading("Approving Y2K tokens...");
-            await y2kContract.methods.approve(stakingContract._address, amountInWei).send({ from: userAccount });
-            console.log("✅ Approval successful.");
-        } else {
-            console.log("✅ Sufficient Allowance.");
+        if (BigInt(allowance) < BigInt(weiAmount)) {
+            console.log("🔹 Approving staking contract to spend Y2K...");
+            const approveTx = await y2kContract.methods.approve(stakingContract._address, weiAmount).send({ from: userAccount });
+            console.log("✅ Approval TX:", approveTx);
         }
 
-        // ✅ Step 2: Stake Y2K in Staking Contract
-        showLoading("Staking tokens...");
-        await stakingContract.methods.stake(amountInWei).send({ from: userAccount });
+        console.log("🔹 Staking Y2K...", weiAmount);
+        const stakeTx = await stakingContract.methods.stake(weiAmount).send({ from: userAccount });
 
-        alert(`✅ Successfully staked ${amount} Y2K!`);
-        await updateUI();
+        console.log("✅ Staked Successfully:", stakeTx);
+        alert("Successfully staked Y2K!");
+        updateUI();
     } catch (error) {
-        console.error("❌ Staking Error:", error);
-        alert("Failed to stake Y2K. Check console for details.");
+        console.error("❌ Stake Error:", error);
+        alert("Failed to stake Y2K:\n" + error.message);
     } finally {
         hideLoading();
     }
 }
 // ✅ **Unstake Y2K Tokens**
-async function unstakeTokens() {
+async function unstakeY2K() {
+    if (!userAccount) {
+        alert("Connect your wallet first.");
+        return;
+    }
+
     const amount = document.getElementById('unstakeAmount').value;
-    if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to unstake.");
+    if (!amount || amount <= 0) {
+        alert("Enter a valid Y2K amount to unstake.");
         return;
     }
 
     try {
-        showLoading("Unstaking tokens...");
+        showLoading("Unstaking Y2K...");
 
-        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+        const weiAmount = web3.utils.toWei(amount, "ether");
 
-        // ✅ Check Staked Balance
-        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        if (BigInt(stakeInfo.amount) < BigInt(amountInWei)) {
-            alert("❌ Not enough staked Y2K to unstake this amount.");
-            hideLoading();
-            return;
-        }
+        console.log("🔹 Unstaking Y2K...", weiAmount);
+        const unstakeTx = await stakingContract.methods.unstake(weiAmount).send({ from: userAccount });
 
-        // ✅ Withdraw from Staking Contract
-        await stakingContract.methods.withdraw(amountInWei).send({ from: userAccount });
-
-        alert(`✅ Successfully unstaked ${amount} Y2K!`);
-        await updateUI();
+        console.log("✅ Unstaked Successfully:", unstakeTx);
+        alert("Successfully unstaked Y2K!");
+        updateUI();
     } catch (error) {
-        console.error("❌ Unstaking Error:", error);
-        alert("Failed to unstake Y2K. Check console for details.");
+        console.error("❌ Unstake Error:", error);
+        alert("Failed to unstake Y2K:\n" + error.message);
     } finally {
         hideLoading();
     }
 }
-
 // ✅ **Max Stake Button**
 async function setMaxStake() {
     try {
