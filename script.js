@@ -186,7 +186,7 @@ async function updateUI() {
         alert("Failed to update dashboard.");
     }
 }
-// ✅ **Stake Y2K Tokens**
+/// ✅ **Stake Y2K Tokens**
 async function stakeTokens() {
     const amount = document.getElementById('stakeAmount').value;
     if (!amount || isNaN(amount) || amount <= 0) {
@@ -195,26 +195,36 @@ async function stakeTokens() {
     }
 
     try {
-        showLoading("Staking tokens...");
+        showLoading("Checking allowance...");
 
         const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
 
-        // Step 1: Approve Y2K Contract to spend the amount
-        await y2kContract.methods.approve(stakingContract._address, amountInWei).send({ from: userAccount });
+        // ✅ Step 1: Check Allowance
+        const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
+        console.log("🔍 Current Allowance:", web3.utils.fromWei(allowance), "Y2K");
 
-        // Step 2: Stake Y2K in Staking Contract
+        if (BigInt(allowance) < BigInt(amountInWei)) {
+            console.log("🚨 Insufficient Allowance. Approving...");
+            showLoading("Approving Y2K tokens...");
+            await y2kContract.methods.approve(stakingContract._address, amountInWei).send({ from: userAccount });
+            console.log("✅ Approval successful.");
+        } else {
+            console.log("✅ Sufficient Allowance.");
+        }
+
+        // ✅ Step 2: Stake Y2K in Staking Contract
+        showLoading("Staking tokens...");
         await stakingContract.methods.stake(amountInWei).send({ from: userAccount });
 
         alert(`✅ Successfully staked ${amount} Y2K!`);
         await updateUI();
     } catch (error) {
         console.error("❌ Staking Error:", error);
-        alert("Failed to stake Y2K.");
+        alert("Failed to stake Y2K. Check console for details.");
     } finally {
         hideLoading();
     }
 }
-
 // ✅ **Unstake Y2K Tokens**
 async function unstakeTokens() {
     const amount = document.getElementById('unstakeAmount').value;
@@ -228,14 +238,22 @@ async function unstakeTokens() {
 
         const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
 
-        // Withdraw from Staking Contract
+        // ✅ Check Staked Balance
+        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+        if (BigInt(stakeInfo.amount) < BigInt(amountInWei)) {
+            alert("❌ Not enough staked Y2K to unstake this amount.");
+            hideLoading();
+            return;
+        }
+
+        // ✅ Withdraw from Staking Contract
         await stakingContract.methods.withdraw(amountInWei).send({ from: userAccount });
 
         alert(`✅ Successfully unstaked ${amount} Y2K!`);
         await updateUI();
     } catch (error) {
         console.error("❌ Unstaking Error:", error);
-        alert("Failed to unstake Y2K.");
+        alert("Failed to unstake Y2K. Check console for details.");
     } finally {
         hideLoading();
     }
