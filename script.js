@@ -72,23 +72,49 @@ async function connectWallet() {
         console.log("Accounts:", accounts);
 
         if (accounts.length > 0) {
-            // Simplified message format
-            const message = "Welcome to Y2K Staking! Please sign this message to verify your wallet ownership. This signature does not trigger any blockchain transaction or cost any fees.";
-            
             try {
-                console.log("Requesting signature with message:", message);
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [
-                        web3.utils.utf8ToHex(message),  // Convert message to hex
-                        accounts[0]
-                    ]
-                });
-                console.log("Signature verified:", signature);
+                const from = accounts[0];
                 
-                userAccount = accounts[0];
+                // Create the message
+                const msgParams = JSON.stringify({
+                    domain: {
+                        name: 'Y2K Staking DApp',
+                        version: '1',
+                        chainId: await web3.eth.getChainId(),
+                    },
+                    message: {
+                        title: 'Wallet Connection',
+                        description: 'Please sign to connect to Y2K Staking',
+                        from: from,
+                        timestamp: new Date().getTime()
+                    },
+                    primaryType: 'Connect',
+                    types: {
+                        EIP712Domain: [
+                            { name: 'name', type: 'string' },
+                            { name: 'version', type: 'string' },
+                            { name: 'chainId', type: 'uint256' }
+                        ],
+                        Connect: [
+                            { name: 'title', type: 'string' },
+                            { name: 'description', type: 'string' },
+                            { name: 'from', type: 'address' },
+                            { name: 'timestamp', type: 'uint256' }
+                        ]
+                    }
+                });
+
+                console.log("Requesting signature...");
+                const signature = await window.ethereum.request({
+                    method: 'eth_signTypedData_v4',
+                    params: [from, msgParams],
+                });
+                
+                console.log("Signature verified:", signature);
+                userAccount = from;
                 updateWalletButton();
                 console.log("Connected:", userAccount);
+                
             } catch (signError) {
                 console.error("Signature rejected:", signError);
                 alert("Please sign the message to connect your wallet");
