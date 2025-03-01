@@ -31,39 +31,44 @@ function waitForContractConfig() {
 
 // 🚀 **Initialize Web3 & Contracts**
 async function initializeWeb3() {
-    console.log("Initializing Web3...");
+    console.log("🔹 Initializing Web3...");
+
+    if (window.ethereum) {
+        console.log("✅ Detected MetaMask or a compatible provider.");
+        web3 = new Web3(window.ethereum);
+    } else if (window.web3) {
+        console.log("✅ Detected legacy Web3 provider.");
+        web3 = new Web3(window.web3.currentProvider);
+    } else {
+        console.error("❌ No Web3 provider detected.");
+        alert("No Web3 provider found. Please use a Web3-compatible wallet.");
+        return;
+    }
 
     try {
-        const config = await waitForContractConfig();
-        if (!config) {
-            throw new Error("Contract configuration not loaded");
-        }
-
-        if (typeof window.ethereum === 'undefined') {
-            throw new Error("Please install MetaMask to use this dApp.");
-        }
-
-        web3 = new Web3(window.ethereum);
-
-        // Load Contracts
-        const contracts = await config.initializeContracts(web3);
-        if (!contracts) {
-            throw new Error("Failed to initialize contracts");
-        }
+        console.log("🔹 Initializing contracts...");
+        const contracts = await initializeContracts(web3);
+        if (!contracts) throw new Error("Failed to initialize contracts.");
 
         stakingContract = contracts.staking;
         pogsContract = contracts.pogs;
         y2kContract = contracts.y2k;
 
-        // Handle Wallet Events
-        window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
-        window.ethereum.on('disconnect', handleDisconnect);
+        console.log("✅ Web3 and contracts initialized.");
+        setupWalletListeners();
 
-        console.log("Web3 Initialized!");
+        // Check existing connection
+        const accounts = await web3.eth.getAccounts();
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            updateWalletButton();
+            await updateUI();
+        } else {
+            console.warn("⚠️ No accounts connected.");
+        }
     } catch (error) {
-        console.error("Initialization error:", error);
-        alert(error.message || "Failed to initialize. Please check your wallet connection.");
+        console.error("❌ Initialization error:", error);
+        alert(error.message || "Failed to initialize Web3.");
     }
 }
 
