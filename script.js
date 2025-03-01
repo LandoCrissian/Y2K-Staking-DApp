@@ -72,16 +72,39 @@ async function connectWallet() {
         console.log("Accounts:", accounts);
 
         if (accounts.length > 0) {
-            userAccount = accounts[0];
-            updateWalletButton();
-            console.log("Connected:", userAccount);
+            // Create clear message for signing
+            const message = `
+Welcome to Y2K Staking!
+
+This signature is required to verify your wallet ownership.
+This will not trigger a blockchain transaction or incur any fees.
+
+Wallet: ${accounts[0]}
+Date: ${new Date().toLocaleString()}
+            `;
+            
+            try {
+                console.log("Requesting signature...");
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, accounts[0]],
+                });
+                console.log("Signature verified:", signature);
+                
+                userAccount = accounts[0];
+                updateWalletButton();
+                console.log("Connected:", userAccount);
+            } catch (signError) {
+                console.error("Signature rejected:", signError);
+                alert("Please sign the message to connect your wallet");
+                return;
+            }
         }
     } catch (error) {
         console.error("Connection error:", error);
         alert(error.message);
     }
 }
-
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
