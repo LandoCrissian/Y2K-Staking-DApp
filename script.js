@@ -1,12 +1,13 @@
 console.log("Y2K Staking DApp Loading...");
 
+// Global Variables
 let web3;
 let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount;
 
-// Wait for contract config to be available
+// Contract Config Check
 function waitForContractConfig() {
     return new Promise((resolve) => {
         if (window.contractConfig) {
@@ -21,7 +22,6 @@ function waitForContractConfig() {
             }
         }, 100);
 
-        // Timeout after 5 seconds
         setTimeout(() => {
             clearInterval(checkConfig);
             resolve(null);
@@ -29,91 +29,138 @@ function waitForContractConfig() {
     });
 }
 
-async function verifyNetwork() {
-    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-    console.log("Current Chain ID:", chainId, "Expected:", window.contractConfig.network.chainId);
-    
-    if (chainId !== window.contractConfig.network.chainId) {
-        try {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: window.contractConfig.network.chainId }],
-            });
-            return true;
-        } catch (switchError) {
-            if (switchError.code === 4902) {
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_addEthereumChain',
-                        params: [window.contractConfig.network],
-                    });
-                    return true;
-                } catch (addError) {
-                    console.error("Failed to add network:", addError);
-                    return false;
-                }
-            }
-            console.error("Failed to switch network:", switchError);
-            return false;
-        }
-    }
-    return true;
-}
-
+// Initialize Web3 and Contracts
 async function initializeWeb3() {
     console.log("Initializing Web3...");
     
     try {
+        // Wait for and verify contract config
         const config = await waitForContractConfig();
         if (!config) {
             throw new Error("Contract configuration not loaded");
         }
-        console.log("Contract config loaded:", config);
+        console.log("Contract config loaded");
 
+        // Check for MetaMask
         if (typeof window.ethereum === 'undefined') {
             throw new Error("Please install MetaMask to use this dApp.");
         }
 
+        // Initialize Web3
         web3 = new Web3(window.ethereum);
         console.log("Web3 initialized:", web3.version);
 
-        const networkVerified = await verifyNetwork();
-        if (!networkVerified) {
-            throw new Error("Please switch to Cronos network");
-        }
-        
+        // Set up contracts
         const contracts = await config.initializeContracts(web3);
         if (!contracts) {
             throw new Error("Failed to initialize contracts");
         }
-        console.log("Contracts initialized:", contracts);
 
         stakingContract = contracts.staking;
         pogsContract = contracts.pogs;
         y2kContract = contracts.y2k;
 
-        console.log("Contract Addresses:", {
+        console.log("Contracts initialized:", {
             staking: stakingContract._address,
             pogs: pogsContract._address,
             y2k: y2kContract._address
         });
 
+        // Set up event listeners
         window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.on('chainChanged', () => window.location.reload());
         window.ethereum.on('disconnect', handleDisconnect);
 
         console.log("Initialization complete!");
-
+        return true;
     } catch (error) {
         console.error("Initialization error:", error);
         alert(error.message || "Failed to initialize. Please check your wallet connection.");
+        return false;
     }
 }
 
-function handleChainChanged() {
-    window.location.reload();
+// Network Verification
+async function verifyNetwork() {
+    try {
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+        const expectedChainId = window.contractConfig.network.chainId;
+        console.log("Chain ID Check:", { current: chainId, expected: expectedChainId });
+
+        if (chainId !== expectedChainId) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: expectedChainId }],
+                });
+                return true;
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [window.contractConfig.network],
+                        });
+                        return true;
+                    } catch (addError) {
+                        console.error("Failed to add network:", addError);
+                        return false;
+                    }
+                }
+                console.error("Failed to switch network:", switchError);
+                return false;
+            }
+        }
+        return true;
+    } catch (error) {
+        console.error("Network verification failed:", error);
+        return false;
+    }
+}
+// Wallet Connection Handling
+async function connectWallet() {
+    try {
+        console.log("Starting wallet connection...");
+        if (!window.ethereum) {
+            throw new Error("Please install MetaMask!");
+        }
+
+        // Verify config and network
+        const config = await waitForContractConfig();
+        if (!config) {
+            throw new Error("DApp not properly initialized");
+        }
+
+        const networkVerified = await verifyNetwork();
+        if (!networkVerified) {
+            throw new Error("Please switch to Cronos network");
+        }
+
+        // Request account access
+        console.log("Requesting accounts...");
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
+        });
+
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            console.log("Connected to account:", userAccount);
+            
+            // Update UI
+            updateWalletButton();
+            await updateUI();
+            return true;
+        }
+        
+        throw new Error("No accounts found");
+    } catch (error) {
+        console.error("Connection error:", error);
+        alert(error.message);
+        return false;
+    }
 }
 
+// Account Change Handlers
 function handleAccountsChanged(accounts) {
     console.log("Accounts changed:", accounts);
     if (accounts.length === 0) {
@@ -126,6 +173,7 @@ function handleAccountsChanged(accounts) {
 }
 
 function handleDisconnect() {
+    console.log("Wallet disconnected");
     disconnectWallet();
 }
 
@@ -135,18 +183,7 @@ function disconnectWallet() {
     resetUI();
 }
 
-function resetUI() {
-    document.getElementById('stakedAmount').textContent = '0';
-    document.getElementById('burnedRewards').textContent = '0';
-    document.getElementById('apyPercentage').textContent = '0';
-    document.getElementById('totalStaked').textContent = '0';
-    document.getElementById('earnedRewards').textContent = '0';
-    document.getElementById('y2kBalance').textContent = '0';
-    document.getElementById('referralLink').value = '';
-    document.getElementById('autoCompoundStatus').textContent = 'OFF';
-    document.getElementById('autoCompoundToggle').checked = false;
-}
-
+// UI Updates
 function updateWalletButton() {
     const connectButton = document.getElementById('connectWallet');
     const disconnectButton = document.getElementById('disconnectWallet');
@@ -162,55 +199,32 @@ function updateWalletButton() {
     }
 }
 
-async function connectWallet() {
-    try {
-        if (!window.ethereum) {
-            throw new Error("Please install MetaMask!");
-        }
+function resetUI() {
+    const elements = {
+        'stakedAmount': '0',
+        'burnedRewards': '0',
+        'apyPercentage': '0',
+        'totalStaked': '0',
+        'earnedRewards': '0',
+        'y2kBalance': '0',
+        'referralLink': '',
+        'autoCompoundStatus': 'OFF'
+    };
 
-        console.log("Checking network...");
-        const config = await waitForContractConfig();
-        if (!config) {
-            throw new Error("DApp not properly initialized");
-        }
-
-        const networkVerified = await verifyNetwork();
-        if (!networkVerified) {
-            throw new Error("Please switch to Cronos network");
-        }
-
-        console.log("Requesting accounts...");
-        const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-        });
-        console.log("Accounts received:", accounts);
-
-        if (accounts.length > 0) {
-            const message = "Welcome to Y2K Staking! Sign to verify your wallet.";
-            try {
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [message, accounts[0]],
-                });
-                console.log("Signature verified:", signature);
-                
-                userAccount = accounts[0];
-                console.log("User account set:", userAccount);
-                
-                updateWalletButton();
-                console.log("Wallet button updated");
-                
-                console.log("Starting UI update...");
-                await updateUI();
-                console.log("UI update completed");
-            } catch (signError) {
-                console.error("Signature rejected:", signError);
-                alert("Please sign the message to connect your wallet");
+    for (const [id, value] of Object.entries(elements)) {
+        const element = document.getElementById(id);
+        if (element) {
+            if (element.tagName === 'INPUT') {
+                element.value = value;
+            } else {
+                element.textContent = value;
             }
         }
-    } catch (error) {
-        console.error("Connection error:", error);
-        alert(window.contractConfig?.utils.getErrorMessage(error) || error.message);
+    }
+
+    const autoCompoundToggle = document.getElementById('autoCompoundToggle');
+    if (autoCompoundToggle) {
+        autoCompoundToggle.checked = false;
     }
 }
 
@@ -221,158 +235,75 @@ async function updateUI() {
     }
 
     try {
-        console.log("Starting UI update for account:", userAccount);
+        console.log("Updating UI for account:", userAccount);
         showLoading("Updating dashboard...");
 
-        // Debug chainId
-        const chainId = await web3.eth.getChainId();
-        console.log("Current Chain ID:", chainId, "Expected:", parseInt(CRONOS_NETWORK.chainId));
-
-        // Log contract addresses
-        console.log("Contract Addresses:", {
-            y2k: y2kContract._address,
-            staking: stakingContract._address,
-            pogs: pogsContract._address
-        });
-
-        // Get Y2K Balance
-        try {
-            const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-            console.log("Y2K Balance Raw:", y2kBalance);
-            const formattedBalance = web3.utils.fromWei(y2kBalance, 'ether');
-            console.log("Y2K Balance Formatted:", formattedBalance);
-            document.getElementById('y2kBalance').textContent = Number(formattedBalance).toFixed(3);
-        } catch (e) {
-            console.error("Error getting Y2K balance:", e);
-        }
-
-        // Get Staking Info
-        try {
-            const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-            console.log("Stake Info:", stakeInfo);
-            const formattedStaked = web3.utils.fromWei(stakeInfo.amount, 'ether');
-            document.getElementById('stakedAmount').textContent = Number(formattedStaked).toFixed(3);
-        } catch (e) {
-            console.error("Error getting stake info:", e);
-        }
-
-        // Get Total Staked
-        try {
-            const totalStaked = await stakingContract.methods.totalStaked().call();
-            console.log("Total Staked:", totalStaked);
-            document.getElementById('totalStaked').textContent = 
-                Number(web3.utils.fromWei(totalStaked, 'ether')).toFixed(3);
-        } catch (e) {
-            console.error("Error getting total staked:", e);
-        }
-
-        // Get Earned Rewards
-        try {
-            const earnedRewards = await stakingContract.methods.earned(userAccount).call();
-            console.log("Earned Rewards:", earnedRewards);
-            document.getElementById('earnedRewards').textContent = 
-                Number(web3.utils.fromWei(earnedRewards, 'ether')).toFixed(3);
-        } catch (e) {
-            console.error("Error getting earned rewards:", e);
-        }
-
-        // Update Referral Link
-        const referralLink = `${window.location.origin}?ref=${userAccount}`;
-        document.getElementById('referralLink').value = referralLink;
-
-        hideLoading();
-    } catch (error) {
-        console.error("Error in updateUI:", error);
-        hideLoading();
-    }
-}
-
-    try {
-        console.log("Starting UI update for account:", userAccount);
-        showLoading("Updating dashboard...");
-
-        // Verify network first
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-        console.log("Current chain ID:", chainId);
-        if (chainId !== window.contractConfig.network.chainId) {
-            throw new Error("Please switch to Cronos network");
-        }
-
-        // Verify contracts are initialized
+        // Verify contracts
         if (!stakingContract || !y2kContract || !pogsContract) {
             console.log("Reinitializing contracts...");
-            const contracts = await window.contractConfig.initializeContracts(web3);
-            if (!contracts) {
-                throw new Error("Failed to initialize contracts");
+            await initializeWeb3();
+        }
+
+        // Fetch all data in parallel
+        const [y2kBalance, stakeInfo, totalStaked, earnedRewards, autoCompoundStatus] = await Promise.all([
+            y2kContract.methods.balanceOf(userAccount).call(),
+            stakingContract.methods.stakes(userAccount).call(),
+            stakingContract.methods.totalStaked().call(),
+            stakingContract.methods.earned(userAccount).call(),
+            stakingContract.methods.autoCompoundingEnabled().call()
+        ].map(p => p.catch(e => {
+            console.error("Error fetching data:", e);
+            return '0';
+        })));
+
+        // Update UI with formatted values
+        const updates = {
+            'y2kBalance': y2kBalance,
+            'stakedAmount': stakeInfo.amount || '0',
+            'totalStaked': totalStaked,
+            'earnedRewards': earnedRewards,
+        };
+
+        for (const [id, value] of Object.entries(updates)) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = formatAmount(value);
             }
-            stakingContract = contracts.staking;
-            y2kContract = contracts.y2k;
-            pogsContract = contracts.pogs;
         }
 
-        // Try each call separately with error handling
-        let y2kBalance = '0';
-        let stakeInfo = { amount: '0' };
-        let totalStaked = '0';
-        let earnedRewards = '0';
-        let autoCompoundStatus = false;
-
-        try {
-            y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-            console.log("Y2K Balance:", y2kBalance);
-        } catch (e) {
-            console.error("Error getting Y2K balance:", e);
+        // Update auto-compound status
+        const autoCompoundToggle = document.getElementById('autoCompoundToggle');
+        const autoCompoundStatus = document.getElementById('autoCompoundStatus');
+        if (autoCompoundToggle && autoCompoundStatus) {
+            autoCompoundToggle.checked = autoCompoundStatus;
+            autoCompoundStatus.textContent = autoCompoundStatus ? 'ON' : 'OFF';
         }
 
-        try {
-            stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-            console.log("Stake Info:", stakeInfo);
-        } catch (e) {
-            console.error("Error getting stake info:", e);
+        // Update referral link
+        const referralLink = document.getElementById('referralLink');
+        if (referralLink) {
+            referralLink.value = `${window.location.origin}?ref=${userAccount}`;
         }
 
-        try {
-            totalStaked = await stakingContract.methods.totalStaked().call();
-            console.log("Total Staked:", totalStaked);
-        } catch (e) {
-            console.error("Error getting total staked:", e);
-        }
-
-        try {
-            earnedRewards = await stakingContract.methods.earned(userAccount).call();
-            console.log("Earned Rewards:", earnedRewards);
-        } catch (e) {
-            console.error("Error getting earned rewards:", e);
-        }
-
-        try {
-            autoCompoundStatus = await stakingContract.methods.autoCompoundingEnabled().call();
-            console.log("Auto Compound Status:", autoCompoundStatus);
-        } catch (e) {
-            console.error("Error getting auto compound status:", e);
-        }
-
-        // Update UI elements
-        document.getElementById('y2kBalance').textContent = window.contractConfig.utils.formatAmount(y2kBalance);
-        document.getElementById('stakedAmount').textContent = window.contractConfig.utils.formatAmount(stakeInfo.amount);
-        document.getElementById('totalStaked').textContent = window.contractConfig.utils.formatAmount(totalStaked);
-        document.getElementById('earnedRewards').textContent = window.contractConfig.utils.formatAmount(earnedRewards);
-        
-        document.getElementById('autoCompoundToggle').checked = autoCompoundStatus;
-        document.getElementById('autoCompoundStatus').textContent = autoCompoundStatus ? 'ON' : 'OFF';
-
-        const referralLink = `${window.location.origin}?ref=${userAccount}`;
-        document.getElementById('referralLink').value = referralLink;
-
-        console.log("UI update completed successfully");
+        console.log("UI update completed");
     } catch (error) {
-        console.error("Error in updateUI:", error);
-        alert(error.message || "Failed to update dashboard. Check console for details.");
+        console.error("Error updating UI:", error);
     } finally {
         hideLoading();
     }
 }
 
+// Helper function for amount formatting
+function formatAmount(amount) {
+    try {
+        const number = web3.utils.fromWei(amount, 'ether');
+        return parseFloat(number).toFixed(3);
+    } catch (error) {
+        console.error("Format error:", error);
+        return '0.000';
+    }
+}
+// Staking Functions
 async function stakeY2K() {
     if (!userAccount) {
         alert("Please connect your wallet first");
@@ -386,73 +317,38 @@ async function stakeY2K() {
     }
 
     try {
-        showLoading("Staking in progress...");
-        const amountWei = web3.utils.toWei(amount, 'ether');
-
-        // Check balance
-        const balance = await y2kContract.methods.balanceOf(userAccount).call();
-        if (BigInt(balance) < BigInt(amountWei)) {
-            throw new Error("Insufficient Y2K balance");
-        }
-
-        // Get referral from localStorage if exists
-        const referrer = localStorage.getItem('referrer') || '0x0000000000000000000000000000000000000000';
-
-        // Check allowance
-        const allowance = await y2kContract.methods.allowance(userAccount, window.contractConfig.addresses.staking).call();
-        if (BigInt(allowance) < BigInt(amountWei)) {
-            await window.contractConfig.utils.sendTransaction(
-                web3,
-                y2kContract.methods.approve(window.contractConfig.addresses.staking, amountWei),
-                userAccount
-            );
-        }
-
-        // Stake
-        async function stakeY2K() {
-    if (!userAccount) {
-        alert("Please connect your wallet first");
-        return;
-    }
-
-    const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to stake");
-        return;
-    }
-
-    try {
         showLoading("Preparing to stake...");
-        const amountWei = web3.utils.toWei(amount, 'ether');
-        console.log("Amount to stake (wei):", amountWei);
+        const amountWei = web3.utils.toWei(amount.toString(), 'ether');
+        console.log("Staking amount:", amount, "Y2K (", amountWei, "wei)");
 
         // Check Y2K balance
         const balance = await y2kContract.methods.balanceOf(userAccount).call();
-        console.log("Current Y2K balance:", balance);
+        console.log("Current Y2K balance:", web3.utils.fromWei(balance, 'ether'));
         
         if (BigInt(balance) < BigInt(amountWei)) {
             throw new Error(`Insufficient Y2K balance. You have ${web3.utils.fromWei(balance, 'ether')} Y2K`);
         }
 
-        // Check allowance
-        console.log("Checking allowance...");
+        // Check and handle allowance
+        showLoading("Checking allowance...");
         const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
-        console.log("Current allowance:", allowance);
+        console.log("Current allowance:", web3.utils.fromWei(allowance, 'ether'));
 
-        // If allowance is insufficient, request approval
         if (BigInt(allowance) < BigInt(amountWei)) {
-            console.log("Requesting approval for:", amountWei);
+            showLoading("Approving tokens...");
             try {
+                const gasEstimate = await y2kContract.methods.approve(stakingContract._address, amountWei)
+                    .estimateGas({ from: userAccount });
+                
                 const approvalTx = await y2kContract.methods.approve(stakingContract._address, amountWei)
                     .send({
                         from: userAccount,
-                        gas: await y2kContract.methods.approve(stakingContract._address, amountWei)
-                            .estimateGas({ from: userAccount })
+                        gas: Math.floor(gasEstimate * 1.2)
                     });
-                console.log("Approval transaction:", approvalTx);
+                console.log("Approval transaction:", approvalTx.transactionHash);
             } catch (approvalError) {
                 console.error("Approval failed:", approvalError);
-                throw new Error("Failed to approve token transfer");
+                throw new Error("Failed to approve token transfer. Please try again.");
             }
         }
 
@@ -461,31 +357,23 @@ async function stakeY2K() {
         console.log("Using referrer:", referrer);
 
         // Perform stake
-        console.log("Staking tokens...");
+        showLoading("Staking tokens...");
+        const gasEstimate = await stakingContract.methods.stake(amountWei, referrer)
+            .estimateGas({ from: userAccount });
+        
         const stakeTx = await stakingContract.methods.stake(amountWei, referrer)
             .send({
                 from: userAccount,
-                gas: await stakingContract.methods.stake(amountWei, referrer)
-                    .estimateGas({ from: userAccount })
+                gas: Math.floor(gasEstimate * 1.2)
             });
 
-        console.log("Stake transaction:", stakeTx);
+        console.log("Stake transaction:", stakeTx.transactionHash);
         document.getElementById('stakeAmount').value = '';
         await updateUI();
         alert("Staking successful!");
     } catch (error) {
         console.error("Staking failed:", error);
-        let errorMessage = "Staking failed: ";
-        
-        if (error.message.includes("insufficient funds")) {
-            errorMessage += "Insufficient CRO for gas fees";
-        } else if (error.message.includes("execution reverted")) {
-            errorMessage += "Transaction rejected by the contract. Please check your input amount.";
-        } else {
-            errorMessage += error.message;
-        }
-        
-        alert(errorMessage);
+        handleTransactionError(error);
     } finally {
         hideLoading();
     }
@@ -504,27 +392,36 @@ async function unstakeY2K() {
     }
 
     try {
-        showLoading("Unstaking in progress...");
-        const amountWei = web3.utils.toWei(amount, 'ether');
+        showLoading("Preparing to unstake...");
+        const amountWei = web3.utils.toWei(amount.toString(), 'ether');
+        console.log("Unstaking amount:", amount, "Y2K (", amountWei, "wei)");
 
         // Check staked balance
         const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+        console.log("Current staked balance:", web3.utils.fromWei(stakeInfo.amount, 'ether'));
+        
         if (BigInt(stakeInfo.amount) < BigInt(amountWei)) {
-            throw new Error("Insufficient staked balance");
+            throw new Error(`Insufficient staked balance. You have ${web3.utils.fromWei(stakeInfo.amount, 'ether')} Y2K staked`);
         }
 
-        await window.contractConfig.utils.sendTransaction(
-            web3,
-            stakingContract.methods.unstake(amountWei),
-            userAccount
-        );
+        // Perform unstake
+        showLoading("Unstaking tokens...");
+        const gasEstimate = await stakingContract.methods.unstake(amountWei)
+            .estimateGas({ from: userAccount });
+        
+        const unstakeTx = await stakingContract.methods.unstake(amountWei)
+            .send({
+                from: userAccount,
+                gas: Math.floor(gasEstimate * 1.2)
+            });
 
+        console.log("Unstake transaction:", unstakeTx.transactionHash);
         document.getElementById('unstakeAmount').value = '';
         await updateUI();
         alert("Unstaking successful!");
     } catch (error) {
         console.error("Unstaking failed:", error);
-        alert(window.contractConfig.utils.getErrorMessage(error));
+        handleTransactionError(error);
     } finally {
         hideLoading();
     }
@@ -537,24 +434,30 @@ async function claimRewards() {
     }
 
     try {
-        showLoading("Claiming rewards...");
-        
+        showLoading("Checking rewards...");
         const earnedAmount = await stakingContract.methods.earned(userAccount).call();
+        console.log("Earned rewards:", web3.utils.fromWei(earnedAmount, 'ether'));
+
         if (BigInt(earnedAmount) <= BigInt(0)) {
             throw new Error("No rewards available to claim");
         }
 
-        await window.contractConfig.utils.sendTransaction(
-            web3,
-            stakingContract.methods.claimReward(),
-            userAccount
-        );
+        showLoading("Claiming rewards...");
+        const gasEstimate = await stakingContract.methods.claimReward()
+            .estimateGas({ from: userAccount });
+        
+        const claimTx = await stakingContract.methods.claimReward()
+            .send({
+                from: userAccount,
+                gas: Math.floor(gasEstimate * 1.2)
+            });
 
+        console.log("Claim transaction:", claimTx.transactionHash);
         await updateUI();
         alert("Rewards claimed successfully!");
     } catch (error) {
         console.error("Claiming rewards failed:", error);
-        alert(window.contractConfig.utils.getErrorMessage(error));
+        handleTransactionError(error);
     } finally {
         hideLoading();
     }
@@ -568,31 +471,46 @@ async function toggleAutoCompounding() {
 
     const status = document.getElementById('autoCompoundToggle').checked;
     try {
-        showLoading(`Auto-compounding ${status ? 'enabling' : 'disabling'}...`);
+        showLoading(`${status ? 'Enabling' : 'Disabling'} auto-compounding...`);
+        
+        const gasEstimate = await stakingContract.methods.toggleAutoCompounding(status)
+            .estimateGas({ from: userAccount });
+        
+        const toggleTx = await stakingContract.methods.toggleAutoCompounding(status)
+            .send({
+                from: userAccount,
+                gas: Math.floor(gasEstimate * 1.2)
+            });
 
-        await window.contractConfig.utils.sendTransaction(
-            web3,
-            stakingContract.methods.toggleAutoCompounding(status),
-            userAccount
-        );
-
+        console.log("Toggle transaction:", toggleTx.transactionHash);
         document.getElementById('autoCompoundStatus').textContent = status ? 'ON' : 'OFF';
         await updateUI();
         alert(`Auto-compounding ${status ? 'enabled' : 'disabled'} successfully!`);
     } catch (error) {
         console.error("Auto-compounding toggle failed:", error);
         document.getElementById('autoCompoundToggle').checked = !status;
-        alert(window.contractConfig.utils.getErrorMessage(error));
+        handleTransactionError(error);
     } finally {
         hideLoading();
     }
 }
-
-function copyReferralLink() {
-    const referralLink = document.getElementById('referralLink');
-    referralLink.select();
-    document.execCommand('copy');
-    alert('Referral link copied to clipboard!');
+// Utility Functions
+function handleTransactionError(error) {
+    let message = "Transaction failed: ";
+    
+    if (error.code === 4001) {
+        message = "Transaction rejected. Please try again.";
+    } else if (error.message.includes("insufficient funds")) {
+        message = "Insufficient CRO for gas fees.";
+    } else if (error.message.includes("execution reverted")) {
+        message = "Transaction rejected by the contract. Please check your input amount.";
+    } else if (error.message.includes("gas required exceeds allowance")) {
+        message = "Transaction requires more gas than available. Please try a smaller amount.";
+    } else {
+        message += error.message;
+    }
+    
+    alert(message);
 }
 
 function showLoading(message) {
@@ -611,29 +529,113 @@ function hideLoading() {
     }
 }
 
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("DOM loaded, initializing...");
+function copyReferralLink() {
+    const referralLink = document.getElementById('referralLink');
+    if (!referralLink) return;
+
     try {
-        await initializeWeb3();
-        
-        // Add event listeners
-        document.getElementById('connectWallet').addEventListener('click', connectWallet);
-        document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
-        document.getElementById('stakeButton').addEventListener('click', stakeY2K);
-        document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
-        document.getElementById('claimRewards').addEventListener('click', claimRewards);
-        document.getElementById('autoCompoundToggle').addEventListener('change', toggleAutoCompounding);
-        
-        // Check for referral
-        const urlParams = new URLSearchParams(window.location.search);
-        const referrer = urlParams.get('ref');
-        if (referrer) {
-            localStorage.setItem('referrer', referrer);
+        referralLink.select();
+        document.execCommand('copy');
+        alert('Referral link copied to clipboard!');
+    } catch (error) {
+        console.error("Copy failed:", error);
+        alert('Failed to copy referral link');
+    }
+}
+
+// MAX button functionality
+function setMaxStakeAmount() {
+    if (!userAccount || !y2kContract) return;
+    
+    y2kContract.methods.balanceOf(userAccount).call()
+        .then(balance => {
+            document.getElementById('stakeAmount').value = 
+                web3.utils.fromWei(balance, 'ether');
+        })
+        .catch(error => {
+            console.error("Error getting max stake amount:", error);
+        });
+}
+
+function setMaxUnstakeAmount() {
+    if (!userAccount || !stakingContract) return;
+    
+    stakingContract.methods.stakes(userAccount).call()
+        .then(stake => {
+            document.getElementById('unstakeAmount').value = 
+                web3.utils.fromWei(stake.amount, 'ether');
+        })
+        .catch(error => {
+            console.error("Error getting max unstake amount:", error);
+        });
+}
+
+// Initialize everything when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("Initializing DApp...");
+    try {
+        // Initialize Web3 and contracts
+        const initialized = await initializeWeb3();
+        if (!initialized) {
+            console.error("Failed to initialize Web3");
+            return;
         }
 
-        console.log("DApp initialized successfully!");
+        // Add event listeners for all buttons
+        const eventListeners = {
+            'connectWallet': connectWallet,
+            'disconnectWallet': disconnectWallet,
+            'stakeButton': stakeY2K,
+            'unstakeButton': unstakeY2K,
+            'claimRewards': claimRewards,
+            'autoCompoundToggle': toggleAutoCompounding,
+            'maxStake': setMaxStakeAmount,
+            'maxUnstake': setMaxUnstakeAmount
+        };
+
+        for (const [id, handler] of Object.entries(eventListeners)) {
+            const element = document.getElementById(id);
+            if (element) {
+                if (id === 'autoCompoundToggle') {
+                    element.addEventListener('change', handler);
+                } else {
+                    element.addEventListener('click', handler);
+                }
+            } else {
+                console.warn(`Element with id '${id}' not found`);
+            }
+        }
+
+        // Check for referral in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrer = urlParams.get('ref');
+        if (referrer && web3.utils.isAddress(referrer)) {
+            localStorage.setItem('referrer', referrer);
+            console.log("Referrer saved:", referrer);
+        }
+
+        // Try to restore previous connection
+        const accounts = await web3.eth.getAccounts();
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            updateWalletButton();
+            await updateUI();
+        }
+
+        console.log("DApp initialization complete!");
     } catch (error) {
         console.error("Failed to initialize DApp:", error);
+        alert("Failed to initialize DApp. Please refresh the page and try again.");
     }
 });
+
+// Add window error handler for unhandled errors
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error("Global error:", {message, source, lineno, colno, error});
+    return false;
+};
+
+// Add unhandled promise rejection handler
+window.onunhandledrejection = function(event) {
+    console.error("Unhandled promise rejection:", event.reason);
+};
