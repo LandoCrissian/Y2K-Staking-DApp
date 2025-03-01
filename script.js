@@ -1,4 +1,6 @@
-console.log("Y2K Staking DApp Loading...");
+if (typeof window.ethereum === 'undefined' && typeof window.web3 === 'undefined') {
+    console.warn("⚠️ No Web3 provider detected. Attempting manual connection...");
+}
 
 let web3;
 let stakingContract;
