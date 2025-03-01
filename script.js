@@ -72,42 +72,22 @@ async function connectWallet() {
         console.log("Accounts:", accounts);
 
         if (accounts.length > 0) {
-            try {
-                const from = accounts[0];
-                
-                // Create the message
-                const msgParams = JSON.stringify({
-                    domain: {
-                        name: 'Y2K Staking DApp',
-                        version: '1',
-                        chainId: await web3.eth.getChainId(),
-                    },
-                    message: {
-                        title: 'Wallet Connection',
-                        description: 'Please sign to connect to Y2K Staking',
-                        from: from,
-                        timestamp: new Date().getTime()
-                    },
-                    primaryType: 'Connect',
-                    types: {
-                        EIP712Domain: [
-                            { name: 'name', type: 'string' },
-                            { name: 'version', type: 'string' },
-                            { name: 'chainId', type: 'uint256' }
-                        ],
-                        Connect: [
-                            { name: 'title', type: 'string' },
-                            { name: 'description', type: 'string' },
-                            { name: 'from', type: 'address' },
-                            { name: 'timestamp', type: 'uint256' }
-                        ]
-                    }
-                });
+            const from = accounts[0];
+            const message = "Welcome to Y2K Staking!\n\n" +
+                          "Click Sign to verify your wallet.\n\n" +
+                          "This signature is free and will not trigger a blockchain transaction.\n\n" +
+                          "Wallet: " + from + "\n" +
+                          "Time: " + new Date().toLocaleString();
 
+            try {
                 console.log("Requesting signature...");
                 const signature = await window.ethereum.request({
-                    method: 'eth_signTypedData_v4',
-                    params: [from, msgParams],
+                    method: 'personal_sign',
+                    params: [
+                        message,
+                        from,
+                        'Connect to Y2K Staking' // Custom title
+                    ]
                 });
                 
                 console.log("Signature verified:", signature);
@@ -125,6 +105,7 @@ async function connectWallet() {
         console.error("Connection error:", error);
         alert(error.message);
     }
+}
 }
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
