@@ -72,26 +72,24 @@ async function connectWallet() {
         console.log("Accounts:", accounts);
 
         if (accounts.length > 0) {
-            const from = accounts[0];
             const message = "Welcome to Y2K Staking!\n\n" +
                           "Click Sign to verify your wallet.\n\n" +
                           "This signature is free and will not trigger a blockchain transaction.\n\n" +
-                          "Wallet: " + from + "\n" +
+                          "Wallet: " + accounts[0] + "\n" +
                           "Time: " + new Date().toLocaleString();
 
             try {
-                console.log("Requesting signature...");
+                console.log("Requesting signature with message:", message);
+                // Convert message to hex
+                const msgHex = web3.utils.utf8ToHex(message);
+                
                 const signature = await window.ethereum.request({
                     method: 'personal_sign',
-                    params: [
-                        message,
-                        from,
-                        'Connect to Y2K Staking' // Custom title
-                    ]
+                    params: [msgHex, accounts[0]]
                 });
                 
                 console.log("Signature verified:", signature);
-                userAccount = from;
+                userAccount = accounts[0];
                 updateWalletButton();
                 console.log("Connected:", userAccount);
                 
