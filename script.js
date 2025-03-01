@@ -7,7 +7,7 @@ let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount;
-let isWalletConnected = false; // Prevent auto-connecting
+let isWalletConnected = false;
 
 // 🚀 **Wait for Contract Config**
 function waitForContractConfig() {
@@ -82,10 +82,8 @@ async function connectWallet() {
             throw new Error("DApp not properly initialized.");
         }
 
-        // Ensure we're on the correct network
         await config.networkUtils.verifyNetwork(window.ethereum);
 
-        // Request account access
         const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
