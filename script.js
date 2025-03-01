@@ -1,3 +1,4 @@
+// 🔹 Check for Web3 Availability
 if (typeof window.ethereum === 'undefined' && typeof window.web3 === 'undefined') {
     console.warn("⚠️ No Web3 provider detected. Attempting manual connection...");
 }
@@ -36,10 +37,10 @@ async function initializeWeb3() {
     console.log("🔹 Initializing Web3...");
 
     if (window.ethereum) {
-        console.log("✅ Detected MetaMask or a compatible provider.");
+        console.log("✅ MetaMask or a compatible provider detected.");
         web3 = new Web3(window.ethereum);
     } else if (window.web3) {
-        console.log("✅ Detected legacy Web3 provider.");
+        console.log("✅ Legacy Web3 provider detected.");
         web3 = new Web3(window.web3.currentProvider);
     } else {
         console.error("❌ No Web3 provider detected.");
@@ -59,11 +60,15 @@ async function initializeWeb3() {
         console.log("✅ Web3 and contracts initialized.");
         setupWalletListeners();
 
+        // Verify network
+        await verifyNetwork();
+
         // Check existing connection
         const accounts = await web3.eth.getAccounts();
         if (accounts.length > 0) {
             userAccount = accounts[0];
             updateWalletButton();
+            await requestSignature(userAccount);
             await updateUI();
         } else {
             console.warn("⚠️ No accounts connected.");
@@ -74,7 +79,24 @@ async function initializeWeb3() {
     }
 }
 
+// 🌐 **Verify Correct Network**
+async function verifyNetwork() {
+    const chainId = await web3.eth.getChainId();
+    if (chainId !== 25) { // Cronos Mainnet chain ID
+        alert("⚠️ Please switch to the Cronos Mainnet!");
+        console.log("❌ Wrong network detected. Expected: Cronos Mainnet (25), Got:", chainId);
+    } else {
+        console.log("✅ Correct network: Cronos Mainnet.");
+    }
+}
+
 // 🌐 **Handle Chain & Account Changes**
+function setupWalletListeners() {
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('chainChanged', handleChainChanged);
+    window.ethereum.on('disconnect', handleDisconnect);
+}
+
 function handleChainChanged() {
     window.location.reload();
 }
@@ -86,6 +108,7 @@ function handleAccountsChanged(accounts) {
     } else if (accounts[0] !== userAccount) {
         userAccount = accounts[0];
         updateWalletButton();
+        requestSignature(userAccount);
         updateUI();
     }
 }
@@ -129,29 +152,88 @@ function updateWalletButton() {
         disconnectButton.style.display = 'none';
     }
 }
-// 🔗 **Connect Wallet with Signature Verification**
-async function testWeb3Connection() {
-    console.log("Checking Web3 connection...");
 
-    if (typeof window.ethereum === 'undefined') {
-        console.error("❌ MetaMask not found.");
-        alert("MetaMask not detected. Please install MetaMask.");
-        return;
-    }
-
+// 🔑 **Sign Before Connecting**
+async function requestSignature(account) {
     try {
-        const web3Test = new Web3(window.ethereum);
-        const accounts = await web3Test.eth.getAccounts();
-        
-        if (accounts.length > 0) {
-            console.log("✅ Web3 connected! Account:", accounts[0]);
-        } else {
-            console.warn("⚠️ No accounts connected. Please connect your wallet.");
-        }
+        const message = `Welcome to Y2K Staking!\n\nVerify your wallet: ${account}`;
+        const signature = await web3.eth.personal.sign(message, account, "");
+        console.log("✅ Signature verified:", signature);
     } catch (error) {
-        console.error("❌ Web3 connection failed:", error);
+        console.error("❌ Signature rejected:", error);
+        alert("You must sign the message to connect.");
+        disconnectWallet();
     }
 }
 
-// Call test function
-testWeb3Connection();
+// 🔗 **Connect Wallet**
+async function connectWallet() {
+    try {
+        if (!window.ethereum) {
+            throw new Error("Please install MetaMask!");
+        }
+
+        await verifyNetwork();
+
+        const accounts = await window.ethereum.request({
+            method: 'eth_requestAccounts',
+        });
+
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            updateWalletButton();
+            await requestSignature(userAccount);
+            await updateUI();
+        }
+    } catch (error) {
+        console.error("❌ Connection error:", error);
+        alert(error.message || "Failed to connect wallet.");
+    }
+}
+
+// 📊 **Update Staking Dashboard**
+async function updateUI() {
+    if (!userAccount) return;
+
+    try {
+        showLoading("Updating dashboard...");
+
+        const [
+            y2kBalance,
+            stakeInfo,
+            totalStaked,
+            earnedRewards,
+            autoCompoundStatus
+        ] = await Promise.all([
+            y2kContract.methods.balanceOf(userAccount).call(),
+            stakingContract.methods.stakes(userAccount).call(),
+            stakingContract.methods.totalStaked().call(),
+            stakingContract.methods.earned(userAccount).call(),
+            stakingContract.methods.autoCompoundingEnabled().call()
+        ]);
+
+        document.getElementById('y2kBalance').textContent = y2kBalance;
+        document.getElementById('stakedAmount').textContent = stakeInfo.amount;
+        document.getElementById('totalStaked').textContent = totalStaked;
+        document.getElementById('earnedRewards').textContent = earnedRewards;
+        
+        document.getElementById('autoCompoundToggle').checked = autoCompoundStatus;
+        document.getElementById('autoCompoundStatus').textContent = autoCompoundStatus ? 'ON' : 'OFF';
+
+        const referralLink = `${window.location.origin}?ref=${userAccount}`;
+        document.getElementById('referralLink').value = referralLink;
+
+        hideLoading();
+    } catch (error) {
+        console.error("❌ Error updating UI:", error);
+        hideLoading();
+        alert("Failed to update dashboard.");
+    }
+}
+
+// 🎯 **Initialize**
+document.addEventListener('DOMContentLoaded', async () => {
+    await initializeWeb3();
+    document.getElementById('connectWallet').addEventListener('click', connectWallet);
+    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+});
