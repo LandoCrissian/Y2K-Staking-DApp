@@ -1,4 +1,3 @@
-// 🔹 Check for Web3 Availability
 if (typeof window.ethereum === 'undefined' && typeof window.web3 === 'undefined') {
     console.warn("⚠️ No Web3 provider detected. Attempting manual connection...");
 }
@@ -24,7 +23,6 @@ function waitForContractConfig() {
             }
         }, 100);
 
-        // Timeout after 5 seconds
         setTimeout(() => {
             clearInterval(checkConfig);
             resolve(null);
@@ -37,10 +35,10 @@ async function initializeWeb3() {
     console.log("🔹 Initializing Web3...");
 
     if (window.ethereum) {
-        console.log("✅ MetaMask or a compatible provider detected.");
+        console.log("✅ Detected MetaMask or a compatible provider.");
         web3 = new Web3(window.ethereum);
     } else if (window.web3) {
-        console.log("✅ Legacy Web3 provider detected.");
+        console.log("✅ Detected legacy Web3 provider.");
         web3 = new Web3(window.web3.currentProvider);
     } else {
         console.error("❌ No Web3 provider detected.");
@@ -59,44 +57,13 @@ async function initializeWeb3() {
 
         console.log("✅ Web3 and contracts initialized.");
         setupWalletListeners();
-
-        // Verify network
-        await verifyNetwork();
-
-        // Check existing connection
-        const accounts = await web3.eth.getAccounts();
-        if (accounts.length > 0) {
-            userAccount = accounts[0];
-            updateWalletButton();
-            await requestSignature(userAccount);
-            await updateUI();
-        } else {
-            console.warn("⚠️ No accounts connected.");
-        }
     } catch (error) {
         console.error("❌ Initialization error:", error);
         alert(error.message || "Failed to initialize Web3.");
     }
 }
 
-// 🌐 **Verify Correct Network**
-async function verifyNetwork() {
-    const chainId = await web3.eth.getChainId();
-    if (chainId !== 25) { // Cronos Mainnet chain ID
-        alert("⚠️ Please switch to the Cronos Mainnet!");
-        console.log("❌ Wrong network detected. Expected: Cronos Mainnet (25), Got:", chainId);
-    } else {
-        console.log("✅ Correct network: Cronos Mainnet.");
-    }
-}
-
 // 🌐 **Handle Chain & Account Changes**
-function setupWalletListeners() {
-    window.ethereum.on('accountsChanged', handleAccountsChanged);
-    window.ethereum.on('chainChanged', handleChainChanged);
-    window.ethereum.on('disconnect', handleDisconnect);
-}
-
 function handleChainChanged() {
     window.location.reload();
 }
@@ -108,7 +75,6 @@ function handleAccountsChanged(accounts) {
     } else if (accounts[0] !== userAccount) {
         userAccount = accounts[0];
         updateWalletButton();
-        requestSignature(userAccount);
         updateUI();
     }
 }
@@ -153,45 +119,48 @@ function updateWalletButton() {
     }
 }
 
-// 🔑 **Sign Before Connecting**
-async function requestSignature(account) {
-    try {
-        const message = `Welcome to Y2K Staking!\n\nVerify your wallet: ${account}`;
-        const signature = await web3.eth.personal.sign(message, account, "");
-        console.log("✅ Signature verified:", signature);
-    } catch (error) {
-        console.error("❌ Signature rejected:", error);
-        alert("You must sign the message to connect.");
-        disconnectWallet();
-    }
-}
-
-// 🔗 **Connect Wallet**
+// 🔗 **Connect Wallet with Signature Verification**
 async function connectWallet() {
     try {
         if (!window.ethereum) {
             throw new Error("Please install MetaMask!");
         }
 
-        await verifyNetwork();
+        const config = await waitForContractConfig();
+        if (!config) {
+            throw new Error("DApp not properly initialized.");
+        }
 
-        const accounts = await window.ethereum.request({
-            method: 'eth_requestAccounts',
+        await config.networkUtils.verifyNetwork(window.ethereum);
+
+        const accounts = await window.ethereum.request({ 
+            method: 'eth_requestAccounts' 
         });
 
         if (accounts.length > 0) {
-            userAccount = accounts[0];
-            updateWalletButton();
-            await requestSignature(userAccount);
-            await updateUI();
+            const message = "Welcome to Y2K Staking! Sign to verify your wallet.";
+            try {
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [message, accounts[0]],
+                });
+                console.log("Signature verified:", signature);
+                
+                userAccount = accounts[0];
+                updateWalletButton();
+                await updateUI();
+            } catch (signError) {
+                console.error("Signature rejected:", signError);
+                alert("Please sign the message to connect your wallet");
+            }
         }
     } catch (error) {
-        console.error("❌ Connection error:", error);
-        alert(error.message || "Failed to connect wallet.");
+        console.error("Connection error:", error);
+        alert(error.message);
     }
 }
 
-// 📊 **Update Staking Dashboard**
+// 🔄 **Update UI with Data**
 async function updateUI() {
     if (!userAccount) return;
 
@@ -212,28 +181,59 @@ async function updateUI() {
             stakingContract.methods.autoCompoundingEnabled().call()
         ]);
 
-        document.getElementById('y2kBalance').textContent = y2kBalance;
-        document.getElementById('stakedAmount').textContent = stakeInfo.amount;
-        document.getElementById('totalStaked').textContent = totalStaked;
-        document.getElementById('earnedRewards').textContent = earnedRewards;
+        document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
+        document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
+        document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
+        document.getElementById('earnedRewards').textContent = web3.utils.fromWei(earnedRewards);
         
         document.getElementById('autoCompoundToggle').checked = autoCompoundStatus;
         document.getElementById('autoCompoundStatus').textContent = autoCompoundStatus ? 'ON' : 'OFF';
 
-        const referralLink = `${window.location.origin}?ref=${userAccount}`;
-        document.getElementById('referralLink').value = referralLink;
-
         hideLoading();
     } catch (error) {
-        console.error("❌ Error updating UI:", error);
+        console.error("Error updating UI:", error);
         hideLoading();
         alert("Failed to update dashboard.");
     }
 }
 
-// 🎯 **Initialize**
+// 🔄 **Loading Functions**
+function showLoading(message) {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (overlay && loadingMessage) {
+        loadingMessage.textContent = message;
+        overlay.style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
+// 🏆 **Referral Link Copy**
+function copyReferralLink() {
+    const referralLink = document.getElementById('referralLink');
+    referralLink.select();
+    document.execCommand('copy');
+    alert('Referral link copied to clipboard!');
+}
+
+// 🔄 **Initialize DApp on Load**
 document.addEventListener('DOMContentLoaded', async () => {
-    await initializeWeb3();
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+    console.log("DOM loaded, initializing...");
+    try {
+        await initializeWeb3();
+        
+        // Add event listeners
+        document.getElementById('connectWallet').addEventListener('click', connectWallet);
+        document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+        
+        console.log("DApp initialized successfully!");
+    } catch (error) {
+        console.error("Failed to initialize DApp:", error);
+    }
 });
