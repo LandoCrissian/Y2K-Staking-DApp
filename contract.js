@@ -63,9 +63,19 @@ const txUtils = {
         }
     },
 
-    formatAmount(amount, decimals = 18) {
-        return parseFloat(web3.utils.fromWei(amount)).toFixed(decimals);
-    },
+    formatAmount(amount, decimals = 3) { // Changed default to 3 decimals
+    try {
+        const number = parseFloat(web3.utils.fromWei(amount));
+        return number.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: decimals,
+            useGrouping: true
+        });
+    } catch (error) {
+        console.error("Format error:", error);
+        return '0.00';
+    }
+}
 
     getErrorMessage(error) {
         if (error.code === 4001) return "Transaction rejected by user";
