@@ -123,42 +123,28 @@ function updateWalletButton() {
     }
 }
 // 🔗 **Connect Wallet with Signature Verification**
-async function connectWallet() {
+async function testWeb3Connection() {
+    console.log("Checking Web3 connection...");
+
+    if (typeof window.ethereum === 'undefined') {
+        console.error("❌ MetaMask not found.");
+        alert("MetaMask not detected. Please install MetaMask.");
+        return;
+    }
+
     try {
-        if (!window.ethereum) {
-            throw new Error("Please install MetaMask!");
-        }
-
-        const config = await waitForContractConfig();
-        if (!config) {
-            throw new Error("DApp not properly initialized");
-        }
-
-        await config.networkUtils.verifyNetwork(window.ethereum);
-
-        const accounts = await window.ethereum.request({ 
-            method: 'eth_requestAccounts' 
-        });
-
+        const web3Test = new Web3(window.ethereum);
+        const accounts = await web3Test.eth.getAccounts();
+        
         if (accounts.length > 0) {
-            const message = `Welcome to Y2K Staking!\n\nSign to verify your wallet: ${accounts[0]}`;
-            try {
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [message, accounts[0]],
-                });
-                console.log("Signature verified:", signature);
-                
-                userAccount = accounts[0];
-                updateWalletButton();
-                await updateUI();
-            } catch (signError) {
-                console.error("Signature rejected:", signError);
-                alert("Please sign the message to connect your wallet");
-            }
+            console.log("✅ Web3 connected! Account:", accounts[0]);
+        } else {
+            console.warn("⚠️ No accounts connected. Please connect your wallet.");
         }
     } catch (error) {
-        console.error("Connection error:", error);
-        alert(window.contractConfig?.utils.getErrorMessage(error) || error.message);
+        console.error("❌ Web3 connection failed:", error);
     }
 }
+
+// Call test function
+testWeb3Connection();
