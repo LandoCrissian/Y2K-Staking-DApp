@@ -17,38 +17,37 @@
         </div>
     </header>
     <main>
-        <section id="staking">
-            <h2>Staking Dashboard</h2>
-            <div class="balance-info">
-                <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K
-                    <button id="maxStake" class="max-button">MAX</button>
-                </p>
-                <p>Currently Staked: <span id="stakedAmount">0</span> Y2K
-                    <button id="maxUnstake" class="max-button">MAX</button>
-                </p>
+<section id="staking">
+    <h2>Staking Dashboard</h2>
+    <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K</p>
+    <p>Currently Staked: <span id="stakedAmount">0</span> Y2K</p>
+    <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
+    <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
+    <p>💹 Total Y2K Staked: <span id="totalStaked">0</span> Y2K</p>
+
+    <div class="staking-actions">
+        <div class="input-wrapper">
+            <div class="input-with-max">
+                <input type="number" id="stakeAmount" placeholder="Enter Y2K amount">
+                <button id="maxStake" class="max-button">MAX</button>
             </div>
-            <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
-            <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
-            <p>💹 Total Y2K Staked: <span id="totalStaked">0</span> Y2K</p>
+            <button id="stakeButton">Stake</button>
+        </div>
 
-            <div class="staking-actions">
-                <div class="input-wrapper">
-                    <input type="number" id="stakeAmount" placeholder="Enter Y2K amount" min="0" step="any">
-                    <button id="stakeButton">Stake</button>
-                </div>
-
-                <div class="input-wrapper">
-                    <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake" min="0" step="any">
-                    <button id="unstakeButton">Unstake</button>
-                </div>
-
-                <div class="rewards-section">
-                    <p>POGs Earned: <span id="earnedRewards">0</span></p>
-                    <button id="claimRewards">Claim Rewards</button>
-                </div>
+        <div class="input-wrapper">
+            <div class="input-with-max">
+                <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake">
+                <button id="maxUnstake" class="max-button">MAX</button>
             </div>
-        </section>
+            <button id="unstakeButton">Unstake</button>
+        </div>
 
+        <div class="rewards-section">
+            <p>POGs Earned: <span id="earnedRewards">0</span></p>
+            <button id="claimRewards">Claim Rewards</button>
+        </div>
+    </div>
+</section>
         <section id="autoCompounding">
             <h2>🔄 Auto-Compounding</h2>
             <label class="switch">
