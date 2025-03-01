@@ -186,6 +186,80 @@ async function updateUI() {
         alert("Failed to update dashboard.");
     }
 }
+// ✅ **Stake Y2K Tokens**
+async function stakeTokens() {
+    const amount = document.getElementById('stakeAmount').value;
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount to stake.");
+        return;
+    }
+
+    try {
+        showLoading("Staking tokens...");
+
+        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+
+        // Step 1: Approve Y2K Contract to spend the amount
+        await y2kContract.methods.approve(stakingContract._address, amountInWei).send({ from: userAccount });
+
+        // Step 2: Stake Y2K in Staking Contract
+        await stakingContract.methods.stake(amountInWei).send({ from: userAccount });
+
+        alert(`✅ Successfully staked ${amount} Y2K!`);
+        await updateUI();
+    } catch (error) {
+        console.error("❌ Staking Error:", error);
+        alert("Failed to stake Y2K.");
+    } finally {
+        hideLoading();
+    }
+}
+
+// ✅ **Unstake Y2K Tokens**
+async function unstakeTokens() {
+    const amount = document.getElementById('unstakeAmount').value;
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount to unstake.");
+        return;
+    }
+
+    try {
+        showLoading("Unstaking tokens...");
+
+        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+
+        // Withdraw from Staking Contract
+        await stakingContract.methods.withdraw(amountInWei).send({ from: userAccount });
+
+        alert(`✅ Successfully unstaked ${amount} Y2K!`);
+        await updateUI();
+    } catch (error) {
+        console.error("❌ Unstaking Error:", error);
+        alert("Failed to unstake Y2K.");
+    } finally {
+        hideLoading();
+    }
+}
+
+// ✅ **Max Stake Button**
+async function setMaxStake() {
+    try {
+        const balance = await y2kContract.methods.balanceOf(userAccount).call();
+        document.getElementById('stakeAmount').value = web3.utils.fromWei(balance);
+    } catch (error) {
+        console.error("❌ Error fetching balance:", error);
+    }
+}
+
+// ✅ **Max Unstake Button**
+async function setMaxUnstake() {
+    try {
+        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+        document.getElementById('unstakeAmount').value = web3.utils.fromWei(stakeInfo.amount);
+    } catch (error) {
+        console.error("❌ Error fetching staked amount:", error);
+    }
+}
 
 // 🔄 **Loading Overlay Functions**
 function showLoading(message) {
