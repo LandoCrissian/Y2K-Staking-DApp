@@ -224,6 +224,73 @@ async function updateUI() {
         console.log("Starting UI update for account:", userAccount);
         showLoading("Updating dashboard...");
 
+        // Debug chainId
+        const chainId = await web3.eth.getChainId();
+        console.log("Current Chain ID:", chainId, "Expected:", parseInt(CRONOS_NETWORK.chainId));
+
+        // Log contract addresses
+        console.log("Contract Addresses:", {
+            y2k: y2kContract._address,
+            staking: stakingContract._address,
+            pogs: pogsContract._address
+        });
+
+        // Get Y2K Balance
+        try {
+            const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
+            console.log("Y2K Balance Raw:", y2kBalance);
+            const formattedBalance = web3.utils.fromWei(y2kBalance, 'ether');
+            console.log("Y2K Balance Formatted:", formattedBalance);
+            document.getElementById('y2kBalance').textContent = Number(formattedBalance).toFixed(3);
+        } catch (e) {
+            console.error("Error getting Y2K balance:", e);
+        }
+
+        // Get Staking Info
+        try {
+            const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            console.log("Stake Info:", stakeInfo);
+            const formattedStaked = web3.utils.fromWei(stakeInfo.amount, 'ether');
+            document.getElementById('stakedAmount').textContent = Number(formattedStaked).toFixed(3);
+        } catch (e) {
+            console.error("Error getting stake info:", e);
+        }
+
+        // Get Total Staked
+        try {
+            const totalStaked = await stakingContract.methods.totalStaked().call();
+            console.log("Total Staked:", totalStaked);
+            document.getElementById('totalStaked').textContent = 
+                Number(web3.utils.fromWei(totalStaked, 'ether')).toFixed(3);
+        } catch (e) {
+            console.error("Error getting total staked:", e);
+        }
+
+        // Get Earned Rewards
+        try {
+            const earnedRewards = await stakingContract.methods.earned(userAccount).call();
+            console.log("Earned Rewards:", earnedRewards);
+            document.getElementById('earnedRewards').textContent = 
+                Number(web3.utils.fromWei(earnedRewards, 'ether')).toFixed(3);
+        } catch (e) {
+            console.error("Error getting earned rewards:", e);
+        }
+
+        // Update Referral Link
+        const referralLink = `${window.location.origin}?ref=${userAccount}`;
+        document.getElementById('referralLink').value = referralLink;
+
+        hideLoading();
+    } catch (error) {
+        console.error("Error in updateUI:", error);
+        hideLoading();
+    }
+}
+
+    try {
+        console.log("Starting UI update for account:", userAccount);
+        showLoading("Updating dashboard...");
+
         // Verify network first
         const chainId = await window.ethereum.request({ method: 'eth_chainId' });
         console.log("Current chain ID:", chainId);
