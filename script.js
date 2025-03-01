@@ -409,18 +409,83 @@ async function stakeY2K() {
         }
 
         // Stake
-        await window.contractConfig.utils.sendTransaction(
-            web3,
-            stakingContract.methods.stake(amountWei, referrer),
-            userAccount
-        );
+        async function stakeY2K() {
+    if (!userAccount) {
+        alert("Please connect your wallet first");
+        return;
+    }
 
+    const amount = document.getElementById('stakeAmount').value;
+    if (!amount || isNaN(amount) || amount <= 0) {
+        alert("Please enter a valid amount to stake");
+        return;
+    }
+
+    try {
+        showLoading("Preparing to stake...");
+        const amountWei = web3.utils.toWei(amount, 'ether');
+        console.log("Amount to stake (wei):", amountWei);
+
+        // Check Y2K balance
+        const balance = await y2kContract.methods.balanceOf(userAccount).call();
+        console.log("Current Y2K balance:", balance);
+        
+        if (BigInt(balance) < BigInt(amountWei)) {
+            throw new Error(`Insufficient Y2K balance. You have ${web3.utils.fromWei(balance, 'ether')} Y2K`);
+        }
+
+        // Check allowance
+        console.log("Checking allowance...");
+        const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
+        console.log("Current allowance:", allowance);
+
+        // If allowance is insufficient, request approval
+        if (BigInt(allowance) < BigInt(amountWei)) {
+            console.log("Requesting approval for:", amountWei);
+            try {
+                const approvalTx = await y2kContract.methods.approve(stakingContract._address, amountWei)
+                    .send({
+                        from: userAccount,
+                        gas: await y2kContract.methods.approve(stakingContract._address, amountWei)
+                            .estimateGas({ from: userAccount })
+                    });
+                console.log("Approval transaction:", approvalTx);
+            } catch (approvalError) {
+                console.error("Approval failed:", approvalError);
+                throw new Error("Failed to approve token transfer");
+            }
+        }
+
+        // Get referral from localStorage if exists
+        const referrer = localStorage.getItem('referrer') || '0x0000000000000000000000000000000000000000';
+        console.log("Using referrer:", referrer);
+
+        // Perform stake
+        console.log("Staking tokens...");
+        const stakeTx = await stakingContract.methods.stake(amountWei, referrer)
+            .send({
+                from: userAccount,
+                gas: await stakingContract.methods.stake(amountWei, referrer)
+                    .estimateGas({ from: userAccount })
+            });
+
+        console.log("Stake transaction:", stakeTx);
         document.getElementById('stakeAmount').value = '';
         await updateUI();
         alert("Staking successful!");
     } catch (error) {
         console.error("Staking failed:", error);
-        alert(window.contractConfig.utils.getErrorMessage(error));
+        let errorMessage = "Staking failed: ";
+        
+        if (error.message.includes("insufficient funds")) {
+            errorMessage += "Insufficient CRO for gas fees";
+        } else if (error.message.includes("execution reverted")) {
+            errorMessage += "Transaction rejected by the contract. Please check your input amount.";
+        } else {
+            errorMessage += error.message;
+        }
+        
+        alert(errorMessage);
     } finally {
         hideLoading();
     }
