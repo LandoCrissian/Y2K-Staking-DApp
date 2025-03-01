@@ -78,10 +78,8 @@ async function connectWallet() {
             throw new Error("DApp not properly initialized.");
         }
 
-        // Ensure we're on the correct network
         await config.networkUtils.verifyNetwork(window.ethereum);
 
-        // Request account access
         const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
