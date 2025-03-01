@@ -58,12 +58,12 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // Sign message for verification
-        const message = `Welcome to Y2K Staking!\n\nAddress: ${userAccount}\n\nSign to verify your wallet.`;
+        // 📢 **Fixed the Signature Message**
+        const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
         try {
             const signature = await window.ethereum.request({
                 method: 'personal_sign',
-                params: [message, userAccount],
+                params: [web3.utils.utf8ToHex(message), userAccount],
             });
 
             console.log("✅ Signature Verified:", signature);
