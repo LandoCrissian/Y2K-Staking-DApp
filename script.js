@@ -38,9 +38,6 @@ async function initializeWeb3() {
     if (window.ethereum) {
         console.log("✅ Detected MetaMask or a compatible provider.");
         web3 = new Web3(window.ethereum);
-    } else if (window.web3) {
-        console.log("✅ Detected legacy Web3 provider.");
-        web3 = new Web3(window.web3.currentProvider);
     } else {
         console.error("❌ No Web3 provider detected.");
         alert("No Web3 provider found. Please use a Web3-compatible wallet.");
@@ -62,7 +59,6 @@ async function initializeWeb3() {
         console.log("🔹 Y2K Contract:", y2kContract._address);
 
         setupWalletListeners();
-
     } catch (error) {
         console.error("❌ Initialization error:", error);
         alert(error.message || "Failed to initialize Web3.");
@@ -82,8 +78,10 @@ async function connectWallet() {
             throw new Error("DApp not properly initialized.");
         }
 
+        // Ensure we're on the correct network
         await config.networkUtils.verifyNetwork(window.ethereum);
 
+        // Request account access
         const accounts = await window.ethereum.request({ 
             method: 'eth_requestAccounts' 
         });
@@ -91,11 +89,11 @@ async function connectWallet() {
         if (accounts.length > 0) {
             userAccount = accounts[0];
 
-            const message = `Welcome to Y2K Staking!\n\nAddress: ${userAccount}\n\nSign to verify your wallet.`;
+            const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
             try {
                 const signature = await window.ethereum.request({
                     method: 'personal_sign',
-                    params: [web3.utils.utf8ToHex(message), userAccount],
+                    params: [message, userAccount],
                 });
 
                 console.log("✅ Signature Verified:", signature);
