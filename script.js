@@ -294,4 +294,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind event listeners
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+
+    // Bind staking/unstaking buttons
+    document.getElementById('stakeButton').addEventListener('click', stakeTokens);
+    document.getElementById('unstakeButton').addEventListener('click', unstakeTokens);
+    document.getElementById('maxStake').addEventListener('click', setMaxStake);
+    document.getElementById('maxUnstake').addEventListener('click', setMaxUnstake);
 });
