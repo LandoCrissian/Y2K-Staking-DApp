@@ -53,26 +53,6 @@ h1, h2 {
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-.balance-info {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin: 15px 0;
-}
-
-.max-button {
-    font-size: 0.8rem;
-    padding: 2px 8px;
-    margin-left: 8px;
-    background: rgba(0, 230, 230, 0.2);
-    border: 1px solid var(--primary-color);
-}
-
-.max-button:hover {
-    background: var(--primary-color);
-    transform: none;
-}
-
 .staking-actions {
     display: flex;
     flex-direction: column;
@@ -80,17 +60,7 @@ h1, h2 {
     margin-top: 20px;
 }
 
-.input-wrapper {
-    display: flex;
-    gap: 10px;
-    margin: 10px 0;
-}
-
-.input-wrapper input {
-    flex: 1;
-}
-
-/* Inputs */
+/* Input Styles */
 input[type="number"], input[type="text"] {
     background: #1a1a1a;
     border: 1px solid var(--primary-color);
@@ -108,6 +78,40 @@ input[type="number"]:focus, input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
     box-shadow: 0 0 10px rgba(0, 230, 230, 0.3);
+}
+
+/* Input with MAX Button */
+.input-with-max {
+    display: flex;
+    gap: 5px;
+    flex: 1;
+}
+
+.input-with-max input {
+    flex: 1;
+}
+
+.max-button {
+    background: rgba(0, 230, 230, 0.2);
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    min-width: unset;
+    white-space: nowrap;
+}
+
+.max-button:hover {
+    background: var(--primary-color);
+    color: black;
+    transform: none;
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+    align-items: center;
 }
 
 /* Buttons */
@@ -288,7 +292,13 @@ input:checked + .slider:before {
         flex-direction: column;
     }
 
-    input, button {
+    .input-with-max {
+        width: 100%;
+    }
+
+    .input-with-max input,
+    .input-with-max button,
+    .input-wrapper button {
         width: 100%;
     }
 
@@ -302,11 +312,5 @@ input:checked + .slider:before {
 
     .wallet-buttons {
         flex-direction: column;
-    }
-
-    .max-button {
-        width: auto;
-        padding: 5px 10px;
-        margin-top: 5px;
     }
 }
