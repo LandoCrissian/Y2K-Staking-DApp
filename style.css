@@ -67,7 +67,6 @@ input[type="number"], input[type="text"] {
     color: #fff;
     padding: 12px;
     border-radius: 5px;
-    margin: 5px 0;
     font-family: 'Orbitron', sans-serif;
     width: 100%;
     box-sizing: border-box;
@@ -80,25 +79,35 @@ input[type="number"]:focus, input[type="text"]:focus {
     box-shadow: 0 0 10px rgba(0, 230, 230, 0.3);
 }
 
-/* Input with MAX Button */
+/* Input with MAX Button Styles */
 .input-with-max {
     display: flex;
-    gap: 5px;
-    flex: 1;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
 }
 
 .input-with-max input {
     flex: 1;
+    min-width: 0;
+    padding: 12px;
+    background: #1a1a1a;
+    border: 1px solid var(--primary-color);
+    color: #fff;
+    border-radius: 5px;
+    font-family: 'Orbitron', sans-serif;
 }
 
 .max-button {
     background: rgba(0, 230, 230, 0.2);
     border: 1px solid var(--primary-color);
     color: var(--primary-color);
-    padding: 5px 10px;
+    padding: 8px 12px;
     font-size: 0.8rem;
-    min-width: unset;
+    min-width: 60px;
+    height: 42px;
     white-space: nowrap;
+    margin-left: 5px;
 }
 
 .max-button:hover {
@@ -112,6 +121,7 @@ input[type="number"]:focus, input[type="text"]:focus {
     gap: 10px;
     margin: 10px 0;
     align-items: center;
+    width: 100%;
 }
 
 /* Buttons */
@@ -139,6 +149,12 @@ button:disabled {
     background: #666;
     cursor: not-allowed;
     transform: none;
+}
+
+#stakeButton, #unstakeButton {
+    min-width: 100px;
+    height: 42px;
+    margin-left: 5px;
 }
 
 button.connected {
@@ -296,10 +312,15 @@ input:checked + .slider:before {
         width: 100%;
     }
 
-    .input-with-max input,
-    .input-with-max button,
-    .input-wrapper button {
+    .max-button {
+        min-width: 60px;
+        width: auto;
+    }
+
+    #stakeButton, #unstakeButton {
         width: 100%;
+        margin-left: 0;
+        margin-top: 10px;
     }
 
     h1 {
