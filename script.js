@@ -7,6 +7,7 @@ let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount = null;
+let hasSigned = false;  // ✅ Prevents duplicate signature prompts
 
 // 🚀 **Initialize Web3 & Contracts**
 async function initializeWeb3() {
@@ -58,22 +59,27 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // 📢 **Fixed the Signature Message**
-        const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
-        try {
-            const signature = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [web3.utils.utf8ToHex(message), userAccount],
-            });
+        if (!hasSigned) {  // ✅ Ensure signature request happens only once
+            const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
+            try {
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [web3.utils.utf8ToHex(message), userAccount],
+                });
 
-            console.log("✅ Signature Verified:", signature);
-            alert("Wallet connected and verified!");
+                console.log("✅ Signature Verified:", signature);
+                alert("Wallet connected and verified!");
+                hasSigned = true;  // ✅ Prevent duplicate requests
 
-            updateWalletButton();
-            await updateUI();
-        } catch (signError) {
-            console.error("❌ Signature Error:", signError);
-            alert("Signature declined. Please sign the message to connect your wallet.");
+                updateWalletButton();
+                await updateUI();
+            } catch (signError) {
+                console.error("❌ Signature Error:", signError);
+                alert("Signature declined. Please sign the message to connect your wallet.");
+                hasSigned = false;  // Reset flag if the user declines
+            }
+        } else {
+            console.log("✅ Signature already verified, skipping redundant request.");
         }
     } catch (error) {
         console.error("❌ Wallet Connection Error:", error);
@@ -110,113 +116,24 @@ function setupWalletListeners() {
 function disconnectWallet() {
     console.log("🔌 Disconnecting wallet...");
     userAccount = null;
+    hasSigned = false;  // ✅ Reset signature status when disconnecting
     updateWalletButton();
     resetUI();
 }
 
-// 🔄 **Stake Y2K Tokens**
-async function stakeY2K() {
-    if (!userAccount) {
-        alert("Connect your wallet first.");
-        return;
-    }
+// 🔄 **Update Wallet Button**
+function updateWalletButton() {
+    const connectButton = document.getElementById('connectWallet');
+    const disconnectButton = document.getElementById('disconnectWallet');
 
-    const amount = document.getElementById('stakeAmount').value;
-    if (!amount || parseFloat(amount) <= 0) {
-        alert("Enter a valid Y2K amount to stake.");
-        return;
-    }
-
-    try {
-        showLoading("Staking Y2K...");
-
-        const weiAmount = web3.utils.toWei(amount, "ether");
-
-        // **Check Allowance Before Staking**
-        const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
-        if (BigInt(allowance) < BigInt(weiAmount)) {
-            console.log("🔹 Approving Y2K for staking...");
-            await y2kContract.methods.approve(stakingContract._address, weiAmount).send({ from: userAccount });
-        }
-
-        console.log("🔹 Sending stake transaction...");
-        await stakingContract.methods.stake(weiAmount).send({ from: userAccount });
-
-        alert("✅ Successfully staked Y2K!");
-        updateUI();
-    } catch (error) {
-        console.error("❌ Stake Error:", error);
-        alert("Failed to stake Y2K:\n" + error.message);
-    } finally {
-        hideLoading();
-    }
-}
-
-// 🔄 **Unstake Y2K Tokens**
-async function unstakeY2K() {
-    if (!userAccount) {
-        alert("Connect your wallet first.");
-        return;
-    }
-
-    const amount = document.getElementById('unstakeAmount').value;
-    if (!amount || parseFloat(amount) <= 0) {
-        alert("Enter a valid Y2K amount to unstake.");
-        return;
-    }
-
-    try {
-        showLoading("Unstaking Y2K...");
-
-        const weiAmount = web3.utils.toWei(amount, "ether");
-
-        console.log("🔹 Sending unstake transaction...");
-        await stakingContract.methods.unstake(weiAmount).send({ from: userAccount });
-
-        alert("✅ Successfully unstaked Y2K!");
-        updateUI();
-    } catch (error) {
-        console.error("❌ Unstake Error:", error);
-        alert("Failed to unstake Y2K:\n" + error.message);
-    } finally {
-        hideLoading();
-    }
-}
-
-// ✅ **Max Stake Button**
-async function setMaxStake() {
-    try {
-        const balance = await y2kContract.methods.balanceOf(userAccount).call();
-        document.getElementById('stakeAmount').value = web3.utils.fromWei(balance);
-    } catch (error) {
-        console.error("❌ Error fetching balance:", error);
-    }
-}
-
-// ✅ **Max Unstake Button**
-async function setMaxUnstake() {
-    try {
-        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        document.getElementById('unstakeAmount').value = web3.utils.fromWei(stakeInfo.amount);
-    } catch (error) {
-        console.error("❌ Error fetching staked amount:", error);
-    }
-}
-
-// 🔄 **Loading Overlay Functions**
-function showLoading(message) {
-    const overlay = document.getElementById('loadingOverlay');
-    const loadingMessage = document.getElementById('loadingMessage');
-    if (overlay && loadingMessage) {
-        loadingMessage.textContent = message;
-        overlay.style.display = 'flex';
-    }
-}
-
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
+    if (userAccount) {
+        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+        connectButton.classList.add('connected');
+        disconnectButton.style.display = 'inline-block';
+    } else {
+        connectButton.textContent = 'Connect Wallet';
+        connectButton.classList.remove('connected');
+        disconnectButton.style.display = 'none';
     }
 }
 
@@ -228,10 +145,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind event listeners
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
-
-    // Bind staking/unstaking buttons
-    document.getElementById('stakeButton').addEventListener('click', stakeY2K);
-    document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
-    document.getElementById('maxStake').addEventListener('click', setMaxStake);
-    document.getElementById('maxUnstake').addEventListener('click', setMaxUnstake);
 });
