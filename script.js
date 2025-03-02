@@ -9,6 +9,43 @@ let y2kContract;
 let userAccount = null;
 let hasSigned = false;
 
+// Staking Calculator Utilities
+const stakingCalculator = {
+    calculateAPY: function(rewardRate) {
+        // RewardRate is in basis points (1/100th of a percent)
+        return (rewardRate / 100).toFixed(2);
+    },
+
+    calculateRewards: function(stakeInfo, rewardRate) {
+        if (!stakeInfo.amount || stakeInfo.amount === '0') return '0';
+
+        const stakedAmount = web3.utils.fromWei(stakeInfo.amount, 'ether');
+        const lastCompoundTime = parseInt(stakeInfo.lastCompoundTime);
+        const currentTime = Math.floor(Date.now() / 1000);
+        const duration = currentTime - lastCompoundTime;
+
+        // Calculate rewards based on contract formula
+        // (stakeInfo.amount * stakedDuration * rewardRate) / 1e18
+        const rawReward = (parseFloat(stakedAmount) * duration * (rewardRate / 1e18));
+        
+        // Apply burn rate (10% by default in contract)
+        const burnRate = 10;
+        const netReward = rawReward * (1 - (burnRate / 100));
+
+        return netReward.toFixed(4);
+    },
+
+    formatNumber: function(number) {
+        if (number > 1000000) {
+            return Number(number).toExponential(2);
+        }
+        return Number(number).toLocaleString('en-US', {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2
+        });
+    }
+};
+
 // Initialize Web3 & Contracts
 async function initializeWeb3() {
     console.log("🔹 Initializing Web3...");
@@ -77,7 +114,6 @@ async function connectWallet() {
                 console.log("✅ Signature Verified:", signature);
                 hasSigned = true;
                 
-                // Only update UI after successful signature
                 updateWalletButton();
                 await updateDashboard();
             } catch (signError) {
@@ -93,17 +129,6 @@ async function connectWallet() {
     }
 }
 
-// Handle Account Connected
-async function handleAccountConnected() {
-    console.log("✅ Account connected:", userAccount);
-    
-    // Verify network
-    await window.contractConfig.networkUtils.verifyNetwork(window.ethereum);
-    
-    updateWalletButton();
-    await updateDashboard();
-}
-
 // Update Dashboard
 async function updateDashboard() {
     if (!userAccount) return;
@@ -112,36 +137,39 @@ async function updateDashboard() {
     showLoading();
 
     try {
-        // Y2K Balance
+        // Get Y2K Balance
         const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-        document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance, 'ether');
-        console.log("✅ Y2K Balance updated:", web3.utils.fromWei(y2kBalance, 'ether'));
+        document.getElementById('y2kBalance').textContent = 
+            stakingCalculator.formatNumber(web3.utils.fromWei(y2kBalance, 'ether'));
 
-        // Staked Amount
+        // Get Stake Info
         const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount, 'ether');
-        console.log("✅ Staked Amount updated:", web3.utils.fromWei(stakeInfo.amount, 'ether'));
+        document.getElementById('stakedAmount').textContent = 
+            stakingCalculator.formatNumber(web3.utils.fromWei(stakeInfo.amount, 'ether'));
 
-        // Reward Rate
+        // Get Reward Rate and Calculate APY
         const rewardRate = await stakingContract.methods.rewardRate().call();
-        document.getElementById('apyPercentage').textContent = (rewardRate / 100).toString();
-        console.log("✅ APY updated:", rewardRate / 100);
+        const apy = stakingCalculator.calculateAPY(rewardRate);
+        document.getElementById('apyPercentage').textContent = apy;
 
-        // Auto-compound Status
+        // Calculate Estimated Rewards
+        const estimatedRewards = stakingCalculator.calculateRewards(stakeInfo, rewardRate);
+        document.getElementById('earnedRewards').textContent = estimatedRewards;
+
+        // Get Auto-compound Status
         const isAutoCompounding = await stakingContract.methods.autoCompoundingEnabled().call();
         document.getElementById('autoCompoundStatus').textContent = isAutoCompounding ? "ON" : "OFF";
-        console.log("✅ Auto-compound status updated:", isAutoCompounding);
 
-        // Referral Status
+        // Get Referral Status and Rewards
         const referralsEnabled = await stakingContract.methods.referralsEnabled().call();
         if (document.getElementById('referralStatus')) {
             document.getElementById('referralStatus').textContent = referralsEnabled ? "Active" : "Inactive";
         }
 
-        // Referral Rewards
         const referralRewards = await stakingContract.methods.referralRewards(userAccount).call();
         if (document.getElementById('referralRewards')) {
-            document.getElementById('referralRewards').textContent = web3.utils.fromWei(referralRewards, 'ether');
+            document.getElementById('referralRewards').textContent = 
+                stakingCalculator.formatNumber(web3.utils.fromWei(referralRewards, 'ether'));
         }
 
         hideLoading();
@@ -149,10 +177,6 @@ async function updateDashboard() {
     } catch (error) {
         console.error("❌ Dashboard Update Error:", error);
         hideLoading();
-        // Only show alert if it's a significant error, not just empty values
-        if (!error.message.includes("null") && !error.message.includes("undefined")) {
-            alert("Some dashboard elements failed to update. Please check your connection.");
-        }
     }
 }
 
@@ -212,6 +236,7 @@ function resetDashboard() {
         'y2kBalance',
         'stakedAmount',
         'apyPercentage',
+        'earnedRewards',
         'autoCompoundStatus',
         'referralStatus',
         'referralRewards'
@@ -219,7 +244,7 @@ function resetDashboard() {
     
     elements.forEach(id => {
         const element = document.getElementById(id);
-        if (element) element.textContent = '0';
+        if (element) element.textContent = '0.00';
     });
 }
 
