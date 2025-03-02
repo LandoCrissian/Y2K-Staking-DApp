@@ -142,24 +142,49 @@ function updateWalletButton() {
 }
 
 // 🔄 **Update UI with Data**
+// 🔄 **Update UI with Data (Fully Fixed)**
 async function updateUI() {
     if (!userAccount) return;
 
+    console.log("🔹 Updating Dashboard...");
+
     try {
-        console.log("🔍 Fetching Y2K balance...");
-        const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-        document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
+        showLoading("Updating dashboard...");
 
-        console.log("🔍 Fetching Staked Amount...");
-        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
+        // ✅ Fetch Y2K Balance
+        try {
+            const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
+            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
+            console.log("✅ Y2K Balance:", y2kBalance);
+        } catch (error) {
+            console.warn("⚠️ Could not fetch Y2K balance, skipping...");
+        }
 
-        console.log("🔍 Fetching Total Staked...");
-        const totalStaked = await stakingContract.methods.totalStaked().call();
-        document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
+        // ✅ Fetch Staked Amount
+        try {
+            const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
+            console.log("✅ Staked Amount:", stakeInfo.amount);
+        } catch (error) {
+            console.warn("⚠️ Could not fetch Staked Amount, skipping...");
+        }
+
+        // ✅ Fetch Total Staked in Contract
+        try {
+            const totalStaked = await stakingContract.methods.totalStaked().call();
+            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
+            console.log("✅ Total Y2K Staked:", totalStaked);
+        } catch (error) {
+            console.warn("⚠️ Could not fetch Total Staked, skipping...");
+        }
+
+        hideLoading();
+        console.log("✅ Dashboard Updated Successfully");
+
     } catch (error) {
         console.error("❌ UI Update Error:", error);
         alert("Failed to update dashboard.");
+        hideLoading();
     }
 }
 
