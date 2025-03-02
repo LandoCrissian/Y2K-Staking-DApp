@@ -142,7 +142,6 @@ function updateWalletButton() {
 }
 
 // 🔄 **Update UI with Data**
-// 🔄 **Update UI with Data (Fully Fixed)**
 async function updateUI() {
     if (!userAccount) return;
 
