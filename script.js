@@ -31,7 +31,7 @@ async function initializeWeb3() {
         pogsContract = contracts.pogs;
         y2kContract = contracts.y2k;
 
-        console.log("✅ Contracts initialized:");
+        console.log("✅ Contracts initialized successfully.");
         console.log("🔹 Staking Contract:", stakingContract._address);
         console.log("🔹 POGS Contract:", pogsContract._address);
         console.log("🔹 Y2K Contract:", y2kContract._address);
@@ -63,7 +63,8 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        if (!hasSigned) {  
+        // ✅ Ensure signature request happens only once
+        if (!hasSigned) {
             const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
             try {
                 const signature = await window.ethereum.request({
@@ -79,12 +80,8 @@ async function connectWallet() {
                 await updateUI();
             } catch (signError) {
                 console.error("❌ Signature Error:", signError);
-                if (userAccount) {
-                    console.warn("⚠️ Signature declined, but wallet remains connected.");
-                } else {
-                    alert("Signature declined. Please sign the message to connect your wallet.");
-                    hasSigned = false;
-                }
+                alert("Signature declined. Please sign the message to connect your wallet.");
+                hasSigned = false;
             }
         } else {
             console.log("✅ Signature already verified, skipping redundant request.");
@@ -122,7 +119,7 @@ function setupWalletListeners() {
     });
 }
 
-// 🔄 **Update Dashboard UI**
+// 🔄 **Update UI with Data**
 async function updateUI() {
     if (!userAccount) return;
 
@@ -138,7 +135,6 @@ async function updateUI() {
         console.log("🔍 Fetching Total Staked...");
         const totalStaked = await stakingContract.methods.totalStaked().call();
         document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
-
     } catch (error) {
         console.error("❌ UI Update Error:", error);
         alert("Failed to update dashboard.");
