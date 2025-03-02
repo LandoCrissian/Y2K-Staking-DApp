@@ -75,11 +75,19 @@ async function connectWallet() {
                 await updateUI();
             } catch (signError) {
                 console.error("❌ Signature Error:", signError);
-                alert("Signature declined. Please sign the message to connect your wallet.");
-                hasSigned = false;  // Reset flag if the user declines
+
+                // ✅ If the wallet is still connected, don’t show error message
+                if (userAccount) {
+                    console.warn("⚠️ Signature declined, but wallet remains connected.");
+                } else {
+                    alert("Signature declined. Please sign the message to connect your wallet.");
+                    hasSigned = false;  // Reset flag if user declines
+                }
             }
         } else {
             console.log("✅ Signature already verified, skipping redundant request.");
+            updateWalletButton();
+            await updateUI();
         }
     } catch (error) {
         console.error("❌ Wallet Connection Error:", error);
