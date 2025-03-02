@@ -24,7 +24,7 @@ async function initializeWeb3() {
 
     try {
         console.log("🔹 Fetching contract configurations...");
-        const contracts = await window.contractConfig.initializeContracts(web3);
+        const contracts = await initializeContracts(web3);
         if (!contracts) throw new Error("Failed to load contracts.");
 
         stakingContract = contracts.staking;
@@ -39,7 +39,7 @@ async function initializeWeb3() {
     }
 }
 
-// 🔗 **Connect Wallet & Verify Signature**
+// 🔗 **Connect Wallet with Signature Verification**
 async function connectWallet() {
     console.log("🔹 Attempting wallet connection...");
 
@@ -59,31 +59,36 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // ✅ If user is already signed, prevent re-signing
-        if (hasSigned) {
-            console.log("✅ Already signed, skipping signature request.");
+        // ✅ Ensure signature request happens only once
+        if (!hasSigned) {
+            const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
+            try {
+                const signature = await window.ethereum.request({
+                    method: 'personal_sign',
+                    params: [web3.utils.utf8ToHex(message), userAccount],
+                });
+
+                console.log("✅ Signature Verified:", signature);
+                alert("Wallet connected and verified!");
+                hasSigned = true; // ✅ Prevent duplicate requests
+
+                updateWalletButton();
+                await updateUI();
+            } catch (signError) {
+                console.error("❌ Signature Error:", signError);
+
+                // ✅ If the wallet is still connected, don’t show error message
+                if (userAccount) {
+                    console.warn("⚠️ Signature declined, but wallet remains connected.");
+                } else {
+                    alert("Signature declined. Please sign the message to connect your wallet.");
+                    hasSigned = false; // Reset flag if user declines
+                }
+            }
+        } else {
+            console.log("✅ Signature already verified, skipping redundant request.");
             updateWalletButton();
             await updateUI();
-            return;
-        }
-
-        const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
-        try {
-            const signature = await window.ethereum.request({
-                method: 'personal_sign',
-                params: [web3.utils.utf8ToHex(message), userAccount],
-            });
-
-            console.log("✅ Signature Verified:", signature);
-            alert("Wallet connected and verified!");
-            hasSigned = true; // ✅ Signature locked for session
-
-            updateWalletButton();
-            await updateUI();
-        } catch (signError) {
-            console.error("❌ Signature Error:", signError);
-            alert("Signature declined. Please sign the message to connect your wallet.");
-            hasSigned = false; // Prevent lock if declined
         }
     } catch (error) {
         console.error("❌ Wallet Connection Error:", error);
@@ -120,28 +125,12 @@ function setupWalletListeners() {
 function disconnectWallet() {
     console.log("🔌 Disconnecting wallet...");
     userAccount = null;
-    hasSigned = false; // ✅ Reset session on disconnect
+    hasSigned = false; // ✅ Reset signature status when disconnecting
     updateWalletButton();
     resetUI();
 }
 
-// 🔄 **Update Wallet Button**
-function updateWalletButton() {
-    const connectButton = document.getElementById('connectWallet');
-    const disconnectButton = document.getElementById('disconnectWallet');
-
-    if (userAccount) {
-        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
-        connectButton.classList.add('connected');
-        disconnectButton.style.display = 'inline-block';
-    } else {
-        connectButton.textContent = 'Connect Wallet';
-        connectButton.classList.remove('connected');
-        disconnectButton.style.display = 'none';
-    }
-}
-
-// 🔄 **Update UI with Data**
+// 🔄 **Update UI with Data (Fixed Flow)**
 async function updateUI() {
     if (!userAccount) return;
 
@@ -182,8 +171,23 @@ async function updateUI() {
 
     } catch (error) {
         console.error("❌ UI Update Error:", error);
-        alert("Failed to update dashboard.");
         hideLoading();
+    }
+}
+
+// 🔄 **Update Wallet Button**
+function updateWalletButton() {
+    const connectButton = document.getElementById('connectWallet');
+    const disconnectButton = document.getElementById('disconnectWallet');
+
+    if (userAccount) {
+        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+        connectButton.classList.add('connected');
+        disconnectButton.style.display = 'inline-block';
+    } else {
+        connectButton.textContent = 'Connect Wallet';
+        connectButton.classList.remove('connected');
+        disconnectButton.style.display = 'none';
     }
 }
 
@@ -191,6 +195,8 @@ async function updateUI() {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
     await initializeWeb3();
+
+    // Bind event listeners
     document.getElementById('connectWallet').addEventListener('click', connectWallet);
     document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
 });
