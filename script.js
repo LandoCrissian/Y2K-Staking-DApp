@@ -7,7 +7,7 @@ let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount = null;
-let hasSigned = false;  // ✅ Prevents duplicate signature prompts
+let hasSigned = false; // ✅ Prevents duplicate signature prompts
 
 // 🚀 **Initialize Web3 & Contracts**
 async function initializeWeb3() {
@@ -32,10 +32,6 @@ async function initializeWeb3() {
         y2kContract = contracts.y2k;
 
         console.log("✅ Contracts initialized successfully.");
-        console.log("🔹 Staking Contract:", stakingContract._address);
-        console.log("🔹 POGS Contract:", pogsContract._address);
-        console.log("🔹 Y2K Contract:", y2kContract._address);
-
         setupWalletListeners();
     } catch (error) {
         console.error("❌ Contract Initialization Error:", error);
@@ -43,7 +39,7 @@ async function initializeWeb3() {
     }
 }
 
-// 🔗 **Connect Wallet with Signature Verification**
+// 🔗 **Connect Wallet & Verify Signature**
 async function connectWallet() {
     console.log("🔹 Attempting wallet connection...");
 
@@ -63,30 +59,31 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // ✅ Ensure signature request happens only once
-        if (!hasSigned) {
-            const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
-            try {
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [web3.utils.utf8ToHex(message), userAccount],
-                });
-
-                console.log("✅ Signature Verified:", signature);
-                alert("Wallet connected and verified!");
-                hasSigned = true;
-
-                updateWalletButton();
-                await updateUI();
-            } catch (signError) {
-                console.error("❌ Signature Error:", signError);
-                alert("Signature declined. Please sign the message to connect your wallet.");
-                hasSigned = false;
-            }
-        } else {
-            console.log("✅ Signature already verified, skipping redundant request.");
+        // ✅ If user is already signed, prevent re-signing
+        if (hasSigned) {
+            console.log("✅ Already signed, skipping signature request.");
             updateWalletButton();
             await updateUI();
+            return;
+        }
+
+        const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
+        try {
+            const signature = await window.ethereum.request({
+                method: 'personal_sign',
+                params: [web3.utils.utf8ToHex(message), userAccount],
+            });
+
+            console.log("✅ Signature Verified:", signature);
+            alert("Wallet connected and verified!");
+            hasSigned = true; // ✅ Signature locked for session
+
+            updateWalletButton();
+            await updateUI();
+        } catch (signError) {
+            console.error("❌ Signature Error:", signError);
+            alert("Signature declined. Please sign the message to connect your wallet.");
+            hasSigned = false; // Prevent lock if declined
         }
     } catch (error) {
         console.error("❌ Wallet Connection Error:", error);
@@ -119,6 +116,31 @@ function setupWalletListeners() {
     });
 }
 
+// 🔌 **Disconnect Wallet**
+function disconnectWallet() {
+    console.log("🔌 Disconnecting wallet...");
+    userAccount = null;
+    hasSigned = false; // ✅ Reset session on disconnect
+    updateWalletButton();
+    resetUI();
+}
+
+// 🔄 **Update Wallet Button**
+function updateWalletButton() {
+    const connectButton = document.getElementById('connectWallet');
+    const disconnectButton = document.getElementById('disconnectWallet');
+
+    if (userAccount) {
+        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+        connectButton.classList.add('connected');
+        disconnectButton.style.display = 'inline-block';
+    } else {
+        connectButton.textContent = 'Connect Wallet';
+        connectButton.classList.remove('connected');
+        disconnectButton.style.display = 'none';
+    }
+}
+
 // 🔄 **Update UI with Data**
 async function updateUI() {
     if (!userAccount) return;
@@ -138,70 +160,6 @@ async function updateUI() {
     } catch (error) {
         console.error("❌ UI Update Error:", error);
         alert("Failed to update dashboard.");
-    }
-}
-
-// ✅ **Stake Y2K**
-async function stakeY2K() {
-    if (!userAccount) {
-        alert("Connect your wallet first.");
-        return;
-    }
-
-    const amount = document.getElementById('stakeAmount').value;
-    if (!amount || parseFloat(amount) <= 0) {
-        alert("Enter a valid Y2K amount to stake.");
-        return;
-    }
-
-    try {
-        console.log("🔹 Staking Amount:", amount);
-        const weiAmount = web3.utils.toWei(amount, "ether");
-
-        // **Check Allowance**
-        console.log("🔹 Checking Y2K allowance...");
-        const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
-        if (BigInt(allowance) < BigInt(weiAmount)) {
-            console.log("🔹 Approving Y2K for staking...");
-            await y2kContract.methods.approve(stakingContract._address, weiAmount).send({ from: userAccount });
-        }
-
-        console.log("🔹 Sending stake transaction...");
-        await stakingContract.methods.stake(weiAmount, "0x0000000000000000000000000000000000000000").send({ from: userAccount });
-
-        alert("✅ Successfully staked Y2K!");
-        updateUI();
-    } catch (error) {
-        console.error("❌ Stake Error:", error);
-        alert("Failed to stake Y2K.");
-    }
-}
-
-// ✅ **Unstake Y2K**
-async function unstakeY2K() {
-    if (!userAccount) {
-        alert("Connect your wallet first.");
-        return;
-    }
-
-    const amount = document.getElementById('unstakeAmount').value;
-    if (!amount || parseFloat(amount) <= 0) {
-        alert("Enter a valid Y2K amount to unstake.");
-        return;
-    }
-
-    try {
-        console.log("🔹 Unstaking Amount:", amount);
-        const weiAmount = web3.utils.toWei(amount, "ether");
-
-        console.log("🔹 Sending unstake transaction...");
-        await stakingContract.methods.unstake(weiAmount).send({ from: userAccount });
-
-        alert("✅ Successfully unstaked Y2K!");
-        updateUI();
-    } catch (error) {
-        console.error("❌ Unstake Error:", error);
-        alert("Failed to unstake Y2K.");
     }
 }
 
