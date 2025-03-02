@@ -1,337 +1,178 @@
-/* General Styles */
-:root {
-    --primary-color: #00e6e6;
-    --primary-dark: #009999;
-    --background-dark: #0a0a0a;
-    --section-bg: #111;
-    --border-color: #222;
-    --success-color: #00aa00;
-    --error-color: #ff4444;
-    --text-color: #e2e8f0;
-}
+/* Add these new styles and modifications to your existing CSS */
 
-body {
-    font-family: 'Orbitron', sans-serif;
-    background: var(--background-dark);
-    color: var(--text-color);
-    text-align: center;
-    padding: 20px;
-    margin: 0;
-    min-height: 100vh;
-}
-
-header {
-    background: rgba(10, 10, 10, 0.95);
-    padding: 15px;
-    border-bottom: 2px solid var(--primary-color);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(5px);
-}
-
-.wallet-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-h1, h2 {
-    color: var(--primary-color);
-    text-shadow: 0 0 10px rgba(0, 230, 230, 0.5);
-}
-
-/* Staking Section */
-#staking {
-    background: var(--section-bg);
-    padding: 20px;
-    margin: 15px auto;
-    border-radius: 10px;
-    max-width: 500px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.staking-actions {
-    display: flex;
-    flex-direction: column;
+/* Dashboard Stats */
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 15px;
-    margin-top: 20px;
+    margin-bottom: 20px;
 }
 
-/* Input Styles */
-input[type="number"], input[type="text"] {
-    background: #1a1a1a;
-    border: 1px solid var(--primary-color);
-    color: #fff;
-    padding: 12px;
-    border-radius: 5px;
-    font-family: 'Orbitron', sans-serif;
-    width: 100%;
-    box-sizing: border-box;
+.stat-item {
+    background: rgba(26, 26, 26, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
     transition: all 0.3s ease;
 }
 
-input[type="number"]:focus, input[type="text"]:focus {
-    outline: none;
+.stat-item:hover {
+    transform: translateY(-2px);
     border-color: var(--primary-color);
-    box-shadow: 0 0 10px rgba(0, 230, 230, 0.3);
+    box-shadow: 0 0 15px rgba(0, 230, 230, 0.2);
 }
 
-/* Input with MAX Button Styles */
-.input-with-max {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
+.stat-item p {
+    margin: 0;
+    font-size: 0.9rem;
 }
 
-.input-with-max input {
-    flex: 1;
-    min-width: 0;
-    padding: 12px;
-    background: #1a1a1a;
-    border: 1px solid var(--primary-color);
-    color: #fff;
-    border-radius: 5px;
-    font-family: 'Orbitron', sans-serif;
-}
-
-.max-button {
-    background: rgba(0, 230, 230, 0.2);
-    border: 1px solid var(--primary-color);
+.stat-item span {
+    display: block;
     color: var(--primary-color);
-    padding: 8px 12px;
-    font-size: 0.8rem;
-    min-width: 60px;
-    height: 42px;
-    white-space: nowrap;
-    margin-left: 5px;
+    font-size: 1.2rem;
+    margin-top: 5px;
+    font-weight: bold;
 }
 
-.max-button:hover {
-    background: var(--primary-color);
-    color: black;
-    transform: none;
+/* Referral Section Improvements */
+.referral-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-.input-wrapper {
+.referral-link-container {
     display: flex;
     gap: 10px;
     margin: 10px 0;
-    align-items: center;
-    width: 100%;
 }
 
-/* Buttons */
-button {
-    background: var(--primary-color);
-    color: black;
-    border: none;
-    padding: 12px 20px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: all 0.3s ease-in-out;
-    font-family: 'Orbitron', sans-serif;
-    min-width: 120px;
+.referral-link-container input {
+    flex: 1;
 }
 
-button:hover {
-    background: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 0 15px rgba(0, 230, 230, 0.5);
-}
-
-button:disabled {
-    background: #666;
-    cursor: not-allowed;
-    transform: none;
-}
-
-#stakeButton, #unstakeButton {
-    min-width: 100px;
+.referral-link-container button {
+    min-width: 80px;
     height: 42px;
-    margin-left: 5px;
+    font-size: 0.9rem;
 }
 
-button.connected {
-    background: var(--success-color);
-    color: white;
-}
-
-button.connected:hover {
-    background: #008800;
-}
-
-#disconnectWallet {
-    background: var(--error-color);
-}
-
-#disconnectWallet:hover {
-    background: #cc0000;
-}
-
-#y2kBalance {
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-/* Auto-Compounding Toggle */
-#autoCompounding {
-    background: var(--section-bg);
-    padding: 20px;
-    margin: 15px auto;
-    border-radius: 10px;
-    max-width: 500px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 26px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ff007f;
-    transition: 0.4s;
-    border-radius: 26px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: var(--primary-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(22px);
-}
-
-/* Loading Overlay */
-.loading-overlay {
+/* Loading Indicator Improvements */
+#loadingIndicator {
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
+    width: 100%;
+    height: 100%;
     background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
+    backdrop-filter: blur(5px);
+    z-index: 1000;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
-    backdrop-filter: blur(5px);
+    flex-direction: column;
 }
 
-.loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid var(--primary-color);
-    border-top: 4px solid transparent;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+/* Animations */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.success-animation {
+    animation: pulse 0.5s ease-in-out;
 }
 
-#loadingMessage {
-    color: var(--primary-color);
-    margin-top: 20px;
-    font-size: 1.1rem;
+/* Error State */
+.error-state {
+    border-color: var(--error-color) !important;
+    animation: shake 0.5s ease-in-out;
 }
 
-/* Sections */
-#lottery, #referrals, #stakingBenefits {
-    background: var(--section-bg);
-    padding: 20px;
-    margin: 15px auto;
-    border-radius: 10px;
-    max-width: 500px;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
 }
 
-#referralLink {
-    width: 80%;
-    background: #1a1a1a;
-    border: 1px solid var(--primary-color);
-    color: #fff;
-    padding: 10px;
-    border-radius: 5px;
-    margin: 10px 0;
-    font-family: 'Orbitron', sans-serif;
+/* Tooltip */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
 }
 
-/* Mobile Responsiveness */
+[data-tooltip]:before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    visibility: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+[data-tooltip]:hover:before {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Improved Mobile Responsiveness */
 @media (max-width: 600px) {
-    body {
+    .dashboard-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .referral-link-container {
+        flex-direction: column;
+    }
+
+    .referral-link-container button {
+        width: 100%;
+    }
+
+    .stat-item {
         padding: 10px;
     }
 
-    section {
-        margin: 10px;
-        padding: 15px;
+    .stat-item span {
+        font-size: 1rem;
     }
 
-    .input-wrapper {
-        flex-direction: column;
+    input[type="number"],
+    input[type="text"] {
+        font-size: 16px; /* Prevents zoom on iOS */
     }
+}
 
-    .input-with-max {
-        width: 100%;
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-dark: #050505;
+        --section-bg: #0a0a0a;
+        --border-color: #1a1a1a;
     }
+}
 
-    .max-button {
-        min-width: 60px;
-        width: auto;
-    }
+/* Focus States for Accessibility */
+button:focus,
+input:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
 
-    #stakeButton, #unstakeButton {
-        width: 100%;
-        margin-left: 0;
-        margin-top: 10px;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-    }
-
-    h2 {
-        font-size: 1.2rem;
-    }
-
-    .wallet-buttons {
-        flex-direction: column;
-    }
+/* Transition Improvements */
+.input-wrapper,
+button,
+.stat-item,
+.slider {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
