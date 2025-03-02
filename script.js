@@ -145,6 +145,55 @@ function updateWalletButton() {
     }
 }
 
+// 🔄 **Update Dashboard UI**
+async function updateUI() {
+    if (!userAccount) return;
+
+    try {
+        showLoading("Updating dashboard...");
+
+        let y2kBalance, stakeInfo, totalStaked, earnedRewards, burnedRewards, apyPercentage, autoCompoundStatus;
+
+        // ✅ Fetch Y2K Balance
+        try {
+            y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
+            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
+        } catch (error) {
+            console.error("❌ Error fetching Y2K balance:", error);
+        }
+
+        // ✅ Fetch User's Staked Amount
+        try {
+            stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
+        } catch (error) {
+            console.error("❌ Error fetching staking info:", error);
+        }
+
+        // ✅ Fetch Total Staked in Contract
+        try {
+            totalStaked = await stakingContract.methods.totalStaked().call();
+            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
+        } catch (error) {
+            console.error("❌ Error fetching total staked:", error);
+        }
+
+        // ✅ Fetch Earned Rewards
+        try {
+            earnedRewards = await stakingContract.methods.earned(userAccount).call();
+            document.getElementById('earnedRewards').textContent = web3.utils.fromWei(earnedRewards);
+        } catch (error) {
+            console.error("❌ Error fetching earned rewards:", error);
+        }
+
+        hideLoading();
+    } catch (error) {
+        console.error("❌ UI Update Error:", error);
+        hideLoading();
+        alert("Failed to update dashboard.");
+    }
+}
+
 // 🔄 **Initialize DApp on Load**
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
