@@ -59,7 +59,6 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // ✅ Ensure signature request happens only once
         if (!hasSigned) {
             const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}`;
             try {
@@ -77,7 +76,6 @@ async function connectWallet() {
             } catch (signError) {
                 console.error("❌ Signature Error:", signError);
 
-                // ✅ If the wallet is still connected, don’t show error message
                 if (userAccount) {
                     console.warn("⚠️ Signature declined, but wallet remains connected.");
                 } else {
@@ -130,7 +128,7 @@ function disconnectWallet() {
     resetUI();
 }
 
-// 🔄 **Update UI with Data (Fixed Flow)**
+// 🔄 **Update UI with Data (Fixed)**
 async function updateUI() {
     if (!userAccount) return;
 
@@ -139,29 +137,29 @@ async function updateUI() {
     try {
         showLoading("Updating dashboard...");
 
-        // ✅ Fetch Y2K Balance
+        // ✅ Fetch & Display Y2K Balance
         try {
             const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
-            console.log("✅ Y2K Balance:", y2kBalance);
+            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance, "ether");
+            console.log("✅ Y2K Balance:", web3.utils.fromWei(y2kBalance, "ether"));
         } catch (error) {
             console.warn("⚠️ Could not fetch Y2K balance, skipping...");
         }
 
-        // ✅ Fetch Staked Amount
+        // ✅ Fetch & Display Staked Amount
         try {
             const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
-            console.log("✅ Staked Amount:", stakeInfo.amount);
+            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount, "ether");
+            console.log("✅ Staked Amount:", web3.utils.fromWei(stakeInfo.amount, "ether"));
         } catch (error) {
             console.warn("⚠️ Could not fetch Staked Amount, skipping...");
         }
 
-        // ✅ Fetch Total Staked in Contract
+        // ✅ Fetch & Display Total Staked in Contract
         try {
             const totalStaked = await stakingContract.methods.totalStaked().call();
-            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
-            console.log("✅ Total Y2K Staked:", totalStaked);
+            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked, "ether");
+            console.log("✅ Total Y2K Staked:", web3.utils.fromWei(totalStaked, "ether"));
         } catch (error) {
             console.warn("⚠️ Could not fetch Total Staked, skipping...");
         }
