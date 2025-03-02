@@ -1,262 +1,288 @@
+// Web3 and Contract Initialization Check
 if (typeof window.ethereum === 'undefined' && typeof window.web3 === 'undefined') {
     console.warn("⚠️ No Web3 provider detected.");
 }
 
+// Global Variables
 let web3;
 let stakingContract;
 let pogsContract;
 let y2kContract;
 let userAccount = null;
 let hasSigned = false;
+let isInitialized = false;
 
-// Staking Calculator Utilities
+// Enhanced Staking Calculator with Improved Formatting
 const stakingCalculator = {
-    calculateAPY: function(rewardRate) {
-        // RewardRate is in basis points (1/100th of a percent)
-        return (rewardRate / 100).toFixed(2);
+    formatBalance: function(amount) {
+        const num = parseFloat(amount);
+        if (isNaN(num)) return '0.00';
+
+        if (num === 0) return '0.00';
+        if (num < 0.01) return '<0.01';
+        if (num < 1000) return num.toFixed(2);
+        if (num < 1000000) return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+        if (num < 1000000000) return `${(num / 1000000).toFixed(2)}M`;
+        return `${(num / 1000000000).toFixed(2)}B`;
+    },
+
+    formatAPY: function(rewardRate) {
+        const apy = (rewardRate / 100);
+        return this.formatBalance(apy);
     },
 
     calculateRewards: function(stakeInfo, rewardRate) {
-        if (!stakeInfo.amount || stakeInfo.amount === '0') return '0';
+        if (!stakeInfo.amount || stakeInfo.amount === '0') return '0.00';
 
-        const stakedAmount = web3.utils.fromWei(stakeInfo.amount, 'ether');
-        const lastCompoundTime = parseInt(stakeInfo.lastCompoundTime);
-        const currentTime = Math.floor(Date.now() / 1000);
-        const duration = currentTime - lastCompoundTime;
+        try {
+            const stakedAmount = web3.utils.fromWei(stakeInfo.amount, 'ether');
+            const lastCompoundTime = parseInt(stakeInfo.lastCompoundTime);
+            const currentTime = Math.floor(Date.now() / 1000);
+            const duration = currentTime - lastCompoundTime;
 
-        // Calculate rewards based on contract formula
-        // (stakeInfo.amount * stakedDuration * rewardRate) / 1e18
-        const rawReward = (parseFloat(stakedAmount) * duration * (rewardRate / 1e18));
-        
-        // Apply burn rate (10% by default in contract)
-        const burnRate = 10;
-        const netReward = rawReward * (1 - (burnRate / 100));
+            // Calculate rewards using contract formula
+            const rawReward = (parseFloat(stakedAmount) * duration * (rewardRate / 1e18));
+            const burnRate = 10; // Contract default
+            const netReward = rawReward * (1 - (burnRate / 100));
 
-        return netReward.toFixed(4);
+            return this.formatBalance(netReward);
+        } catch (error) {
+            console.error("Reward calculation error:", error);
+            return '0.00';
+        }
     },
 
-    formatNumber: function(number) {
-        if (number > 1000000) {
-            return Number(number).toExponential(2);
-        }
-        return Number(number).toLocaleString('en-US', {
-            maximumFractionDigits: 2,
-            minimumFractionDigits: 2
-        });
+    getDurationString: function(timestamp) {
+        if (!timestamp) return 'Not staking';
+        const now = Math.floor(Date.now() / 1000);
+        const duration = now - parseInt(timestamp);
+        
+        const days = Math.floor(duration / 86400);
+        const hours = Math.floor((duration % 86400) / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        return `${minutes}m`;
     }
 };
 
-// Initialize Web3 & Contracts
+// Enhanced Contract Initialization
 async function initializeWeb3() {
-    console.log("🔹 Initializing Web3...");
-
-    if (window.ethereum) {
-        console.log("✅ MetaMask detected.");
-        web3 = new Web3(window.ethereum);
-    } else {
-        console.error("❌ No Web3 provider found.");
-        alert("Please install MetaMask!");
-        return;
-    }
+    console.log("🔹 Starting Web3 initialization...");
 
     try {
-        console.log("🔹 Initializing contracts...");
-        const contracts = await window.contractConfig.initializeContracts(web3);
-        if (!contracts) throw new Error("Contract initialization failed");
+        if (!window.ethereum) {
+            throw new Error("No Web3 provider found. Please install MetaMask!");
+        }
+
+        web3 = new Web3(window.ethereum);
+        
+        // Wait for contract config with timeout
+        const config = await waitForContractConfig();
+        if (!config) {
+            throw new Error("Contract configuration failed to load");
+        }
+
+        const contracts = await config.initializeContracts(web3);
+        if (!contracts) {
+            throw new Error("Failed to initialize contracts");
+        }
 
         stakingContract = contracts.staking;
         pogsContract = contracts.pogs;
         y2kContract = contracts.y2k;
 
-        console.log("✅ Contracts initialized");
-        setupWalletListeners();
-        
-        // Check if already connected
-        const accounts = await web3.eth.getAccounts();
-        if (accounts.length > 0) {
-            userAccount = accounts[0];
-            await handleAccountConnected();
+        if (!verifyContracts()) {
+            throw new Error("Contract verification failed");
         }
+
+        isInitialized = true;
+        console.log("✅ Web3 initialization complete");
+        
+        setupWalletListeners();
+        await checkExistingConnection();
+
     } catch (error) {
         console.error("❌ Initialization Error:", error);
-        alert("Failed to initialize. Please refresh the page.");
+        showError(error.message);
     }
 }
 
-// Connect Wallet with Signature
+// Wallet Connection with Enhanced Security
 async function connectWallet() {
-    console.log("🔹 Attempting wallet connection...");
-
-    if (!window.ethereum) {
-        alert("MetaMask is not installed. Please install it to continue.");
+    if (!isInitialized) {
+        showError("Please wait for initialization to complete");
         return;
     }
 
+    console.log("🔹 Attempting wallet connection...");
+
     try {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-        if (accounts.length === 0) {
-            alert("Wallet connection failed. No accounts found.");
-            return;
+        if (!accounts.length) {
+            throw new Error("No accounts found");
         }
 
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        if (!hasSigned) {
-            const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}\nTimestamp: ${Date.now()}`;
-            try {
-                const signature = await window.ethereum.request({
-                    method: 'personal_sign',
-                    params: [web3.utils.utf8ToHex(message), userAccount],
-                });
+        // Network check
+        await checkAndSwitchNetwork();
 
-                console.log("✅ Signature Verified:", signature);
-                hasSigned = true;
-                
-                updateWalletButton();
-                await updateDashboard();
-            } catch (signError) {
-                console.error("❌ Signature Error:", signError);
-                userAccount = null;
-                alert("Signature required to connect wallet.");
-                return;
-            }
+        if (!hasSigned) {
+            await requestSignature();
         }
+
+        updateWalletButton();
+        await updateDashboard();
+
     } catch (error) {
-        console.error("❌ Wallet Connection Error:", error);
-        alert("Failed to connect wallet.");
+        console.error("❌ Connection Error:", error);
+        showError(error.message);
+        resetWalletState();
     }
 }
 
-// Update Dashboard
+// Enhanced Dashboard Update
 async function updateDashboard() {
-    if (!userAccount) return;
+    if (!userAccount || !isInitialized) return;
 
-    console.log("🔹 Updating Dashboard...");
+    console.log("🔹 Updating dashboard...");
     showLoading();
 
     try {
-        // Get Y2K Balance
-        const y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-        document.getElementById('y2kBalance').textContent = 
-            stakingCalculator.formatNumber(web3.utils.fromWei(y2kBalance, 'ether'));
+        // Fetch all data in parallel
+        const [
+            y2kBalance,
+            stakeInfo,
+            rewardRate,
+            autoCompounding,
+            referralsEnabled,
+            referralRewards
+        ] = await Promise.all([
+            y2kContract.methods.balanceOf(userAccount).call(),
+            stakingContract.methods.stakes(userAccount).call(),
+            stakingContract.methods.rewardRate().call(),
+            stakingContract.methods.autoCompoundingEnabled().call(),
+            stakingContract.methods.referralsEnabled().call(),
+            stakingContract.methods.referralRewards(userAccount).call()
+        ]);
 
-        // Get Stake Info
-        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        document.getElementById('stakedAmount').textContent = 
-            stakingCalculator.formatNumber(web3.utils.fromWei(stakeInfo.amount, 'ether'));
-
-        // Get Reward Rate and Calculate APY
-        const rewardRate = await stakingContract.methods.rewardRate().call();
-        const apy = stakingCalculator.calculateAPY(rewardRate);
-        document.getElementById('apyPercentage').textContent = apy;
-
-        // Calculate Estimated Rewards
-        const estimatedRewards = stakingCalculator.calculateRewards(stakeInfo, rewardRate);
-        document.getElementById('earnedRewards').textContent = estimatedRewards;
-
-        // Get Auto-compound Status
-        const isAutoCompounding = await stakingContract.methods.autoCompoundingEnabled().call();
-        document.getElementById('autoCompoundStatus').textContent = isAutoCompounding ? "ON" : "OFF";
-
-        // Get Referral Status and Rewards
-        const referralsEnabled = await stakingContract.methods.referralsEnabled().call();
-        if (document.getElementById('referralStatus')) {
-            document.getElementById('referralStatus').textContent = referralsEnabled ? "Active" : "Inactive";
+        // Update UI elements
+        updateElement('y2kBalance', stakingCalculator.formatBalance(web3.utils.fromWei(y2kBalance, 'ether')));
+        updateElement('stakedAmount', stakingCalculator.formatBalance(web3.utils.fromWei(stakeInfo.amount, 'ether')));
+        updateElement('apyPercentage', stakingCalculator.formatAPY(rewardRate));
+        updateElement('earnedRewards', stakingCalculator.calculateRewards(stakeInfo, rewardRate));
+        updateElement('autoCompoundStatus', autoCompounding ? "ON" : "OFF");
+        
+        if (document.getElementById('stakingDuration')) {
+            updateElement('stakingDuration', stakingCalculator.getDurationString(stakeInfo.startTime));
         }
 
-        const referralRewards = await stakingContract.methods.referralRewards(userAccount).call();
-        if (document.getElementById('referralRewards')) {
-            document.getElementById('referralRewards').textContent = 
-                stakingCalculator.formatNumber(web3.utils.fromWei(referralRewards, 'ether'));
+        if (document.getElementById('referralStatus')) {
+            updateElement('referralStatus', referralsEnabled ? "Active" : "Inactive");
+            updateElement('referralRewards', stakingCalculator.formatBalance(web3.utils.fromWei(referralRewards, 'ether')));
         }
 
         hideLoading();
-        console.log("✅ Dashboard Updated Successfully");
+        console.log("✅ Dashboard updated successfully");
+
     } catch (error) {
         console.error("❌ Dashboard Update Error:", error);
+        showError("Failed to update dashboard");
         hideLoading();
     }
 }
 
-// Wallet Event Listeners
-function setupWalletListeners() {
-    if (!window.ethereum) return;
-
-    window.ethereum.on('chainChanged', () => {
-        console.warn("🔄 Chain changed, reloading...");
-        window.location.reload();
-    });
-
-    window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-            disconnectWallet();
-        } else {
-            userAccount = accounts[0];
-            updateWalletButton();
-            updateDashboard();
-        }
-    });
-
-    window.ethereum.on('disconnect', () => {
-        console.warn("🔌 Wallet disconnected.");
-        disconnectWallet();
-    });
+// Utility Functions
+async function waitForContractConfig(timeout = 5000) {
+    const startTime = Date.now();
+    while (!window.contractConfig && Date.now() - startTime < timeout) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return window.contractConfig;
 }
 
-// Disconnect Wallet
-function disconnectWallet() {
-    console.log("🔌 Disconnecting wallet...");
+function verifyContracts() {
+    return stakingContract?.methods && 
+           pogsContract?.methods && 
+           y2kContract?.methods;
+}
+
+async function checkAndSwitchNetwork() {
+    const chainId = await web3.eth.getChainId();
+    if (chainId !== 25) { // Cronos MainNet
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x19' }],
+        });
+    }
+}
+
+async function requestSignature() {
+    const message = `Welcome to Y2K Staking!\n\nSign this message to verify your wallet.\n\nAddress: ${userAccount}\nTimestamp: ${Date.now()}`;
+    const signature = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [web3.utils.utf8ToHex(message), userAccount],
+    });
+    hasSigned = true;
+    return signature;
+}
+
+function updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+}
+
+function showError(message) {
+    alert(message); // Replace with your preferred error display method
+}
+
+function showLoading() {
+    const loader = document.getElementById('loadingOverlay');
+    if (loader) loader.style.display = 'flex';
+}
+
+function hideLoading() {
+    const loader = document.getElementById('loadingOverlay');
+    if (loader) loader.style.display = 'none';
+}
+
+function resetWalletState() {
     userAccount = null;
     hasSigned = false;
     updateWalletButton();
     resetDashboard();
 }
 
-// Update Wallet Button
-function updateWalletButton() {
-    const connectButton = document.getElementById('connectWallet');
-    const disconnectButton = document.getElementById('disconnectWallet');
+// Event Listeners and Setup
+function setupWalletListeners() {
+    if (!window.ethereum) return;
 
-    if (userAccount) {
-        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
-        connectButton.classList.add('connected');
-        disconnectButton.style.display = 'inline-block';
+    window.ethereum.on('chainChanged', () => window.location.reload());
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('disconnect', resetWalletState);
+}
+
+async function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        resetWalletState();
     } else {
-        connectButton.textContent = 'Connect Wallet';
-        connectButton.classList.remove('connected');
-        disconnectButton.style.display = 'none';
+        userAccount = accounts[0];
+        hasSigned = false;
+        updateWalletButton();
+        await updateDashboard();
     }
 }
 
-// Reset Dashboard
-function resetDashboard() {
-    const elements = [
-        'y2kBalance',
-        'stakedAmount',
-        'apyPercentage',
-        'earnedRewards',
-        'autoCompoundStatus',
-        'referralStatus',
-        'referralRewards'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = '0.00';
-    });
-}
-
-// Loading handlers
-function showLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) loadingOverlay.style.display = 'flex';
-}
-
-function hideLoading() {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    if (loadingOverlay) loadingOverlay.style.display = 'none';
+async function checkExistingConnection() {
+    const accounts = await web3.eth.getAccounts();
+    if (accounts.length > 0) {
+        userAccount = accounts[0];
+        updateWalletButton();
+        await updateDashboard();
+    }
 }
 
 // Initialize on page load
@@ -265,6 +291,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initializeWeb3();
 
     // Add event listeners
-    document.getElementById('connectWallet').addEventListener('click', connectWallet);
-    document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
+    document.getElementById('connectWallet')?.addEventListener('click', connectWallet);
+    document.getElementById('disconnectWallet')?.addEventListener('click', resetWalletState);
 });
