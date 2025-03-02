@@ -114,146 +114,70 @@ function disconnectWallet() {
     resetUI();
 }
 
-// 🔄 **Reset UI**
-function resetUI() {
-    document.getElementById('stakedAmount').textContent = '0';
-    document.getElementById('burnedRewards').textContent = '0';
-    document.getElementById('apyPercentage').textContent = '0';
-    document.getElementById('totalStaked').textContent = '0';
-    document.getElementById('earnedRewards').textContent = '0';
-    document.getElementById('y2kBalance').textContent = '0';
-    document.getElementById('autoCompoundStatus').textContent = 'OFF';
-    document.getElementById('autoCompoundToggle').checked = false;
-}
-
-// 🔄 **Update Wallet Button**
-function updateWalletButton() {
-    const connectButton = document.getElementById('connectWallet');
-    const disconnectButton = document.getElementById('disconnectWallet');
-
-    if (userAccount) {
-        connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
-        connectButton.classList.add('connected');
-        disconnectButton.style.display = 'inline-block';
-    } else {
-        connectButton.textContent = 'Connect Wallet';
-        connectButton.classList.remove('connected');
-        disconnectButton.style.display = 'none';
+// 🔄 **Stake Y2K Tokens**
+async function stakeY2K() {
+    if (!userAccount) {
+        alert("Connect your wallet first.");
+        return;
     }
-}
 
-// 🔄 **Update UI with Data**
-async function updateUI() {
-    if (!userAccount) return;
-
-    try {
-        showLoading("Updating dashboard...");
-
-        let y2kBalance, stakeInfo, totalStaked, earnedRewards, autoCompoundStatus;
-
-        try {
-            y2kBalance = await y2kContract.methods.balanceOf(userAccount).call();
-            document.getElementById('y2kBalance').textContent = web3.utils.fromWei(y2kBalance);
-        } catch (error) {
-            console.error("❌ Error fetching Y2K balance:", error);
-        }
-
-        try {
-            stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-            document.getElementById('stakedAmount').textContent = web3.utils.fromWei(stakeInfo.amount);
-        } catch (error) {
-            console.error("❌ Error fetching staking info:", error);
-        }
-
-        try {
-            totalStaked = await stakingContract.methods.totalStaked().call();
-            document.getElementById('totalStaked').textContent = web3.utils.fromWei(totalStaked);
-        } catch (error) {
-            console.error("❌ Error fetching total staked:", error);
-        }
-
-        try {
-            earnedRewards = await stakingContract.methods.earned(userAccount).call();
-            document.getElementById('earnedRewards').textContent = web3.utils.fromWei(earnedRewards);
-        } catch (error) {
-            console.error("❌ Error fetching earned rewards:", error);
-        }
-
-        hideLoading();
-    } catch (error) {
-        console.error("❌ UI Update Error:", error);
-        hideLoading();
-        alert("Failed to update dashboard.");
-    }
-}
-/// ✅ **Stake Y2K Tokens**
-async function stakeTokens() {
     const amount = document.getElementById('stakeAmount').value;
-    if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to stake.");
+    if (!amount || parseFloat(amount) <= 0) {
+        alert("Enter a valid Y2K amount to stake.");
         return;
     }
 
     try {
-        showLoading("Checking allowance...");
+        showLoading("Staking Y2K...");
 
-        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+        const weiAmount = web3.utils.toWei(amount, "ether");
 
-        // ✅ Step 1: Check Allowance
+        // **Check Allowance Before Staking**
         const allowance = await y2kContract.methods.allowance(userAccount, stakingContract._address).call();
-        console.log("🔍 Current Allowance:", web3.utils.fromWei(allowance), "Y2K");
-
-        if (BigInt(allowance) < BigInt(amountInWei)) {
-            console.log("🚨 Insufficient Allowance. Approving...");
-            showLoading("Approving Y2K tokens...");
-            await y2kContract.methods.approve(stakingContract._address, amountInWei).send({ from: userAccount });
-            console.log("✅ Approval successful.");
-        } else {
-            console.log("✅ Sufficient Allowance.");
+        if (BigInt(allowance) < BigInt(weiAmount)) {
+            console.log("🔹 Approving Y2K for staking...");
+            await y2kContract.methods.approve(stakingContract._address, weiAmount).send({ from: userAccount });
         }
 
-        // ✅ Step 2: Stake Y2K in Staking Contract
-        showLoading("Staking tokens...");
-        await stakingContract.methods.stake(amountInWei).send({ from: userAccount });
+        console.log("🔹 Sending stake transaction...");
+        await stakingContract.methods.stake(weiAmount).send({ from: userAccount });
 
-        alert(`✅ Successfully staked ${amount} Y2K!`);
-        await updateUI();
+        alert("✅ Successfully staked Y2K!");
+        updateUI();
     } catch (error) {
-        console.error("❌ Staking Error:", error);
-        alert("Failed to stake Y2K. Check console for details.");
+        console.error("❌ Stake Error:", error);
+        alert("Failed to stake Y2K:\n" + error.message);
     } finally {
         hideLoading();
     }
 }
-// ✅ **Unstake Y2K Tokens**
-async function unstakeTokens() {
+
+// 🔄 **Unstake Y2K Tokens**
+async function unstakeY2K() {
+    if (!userAccount) {
+        alert("Connect your wallet first.");
+        return;
+    }
+
     const amount = document.getElementById('unstakeAmount').value;
-    if (!amount || isNaN(amount) || amount <= 0) {
-        alert("Please enter a valid amount to unstake.");
+    if (!amount || parseFloat(amount) <= 0) {
+        alert("Enter a valid Y2K amount to unstake.");
         return;
     }
 
     try {
-        showLoading("Unstaking tokens...");
+        showLoading("Unstaking Y2K...");
 
-        const amountInWei = web3.utils.toWei(amount.toString(), 'ether');
+        const weiAmount = web3.utils.toWei(amount, "ether");
 
-        // ✅ Check Staked Balance
-        const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
-        if (BigInt(stakeInfo.amount) < BigInt(amountInWei)) {
-            alert("❌ Not enough staked Y2K to unstake this amount.");
-            hideLoading();
-            return;
-        }
+        console.log("🔹 Sending unstake transaction...");
+        await stakingContract.methods.unstake(weiAmount).send({ from: userAccount });
 
-        // ✅ Withdraw from Staking Contract
-        await stakingContract.methods.withdraw(amountInWei).send({ from: userAccount });
-
-        alert(`✅ Successfully unstaked ${amount} Y2K!`);
-        await updateUI();
+        alert("✅ Successfully unstaked Y2K!");
+        updateUI();
     } catch (error) {
-        console.error("❌ Unstaking Error:", error);
-        alert("Failed to unstake Y2K. Check console for details.");
+        console.error("❌ Unstake Error:", error);
+        alert("Failed to unstake Y2K:\n" + error.message);
     } finally {
         hideLoading();
     }
@@ -296,14 +220,6 @@ function hideLoading() {
     }
 }
 
-// 🏆 **Copy Referral Link**
-function copyReferralLink() {
-    const referralLink = document.getElementById('referralLink');
-    referralLink.select();
-    document.execCommand('copy');
-    alert('Referral link copied!');
-}
-
 // 🔄 **Initialize DApp on Load**
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM loaded, initializing...");
@@ -314,8 +230,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('disconnectWallet').addEventListener('click', disconnectWallet);
 
     // Bind staking/unstaking buttons
-    document.getElementById('stakeButton').addEventListener('click', stakeTokens);
-    document.getElementById('unstakeButton').addEventListener('click', unstakeTokens);
+    document.getElementById('stakeButton').addEventListener('click', stakeY2K);
+    document.getElementById('unstakeButton').addEventListener('click', unstakeY2K);
     document.getElementById('maxStake').addEventListener('click', setMaxStake);
     document.getElementById('maxUnstake').addEventListener('click', setMaxUnstake);
 });
