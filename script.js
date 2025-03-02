@@ -3,32 +3,38 @@ if (typeof window.ethereum === 'undefined' && typeof window.web3 === 'undefined'
     console.warn("⚠️ No Web3 provider detected.");
 }
 
-// Global Variables
-let web3;
-let stakingContract;
-let pogsContract;
-let y2kContract;
+// Global Variables with Clear Initialization
+let web3 = null;
+let stakingContract = null;
+let pogsContract = null;
+let y2kContract = null;
 let userAccount = null;
 let hasSigned = false;
 let isInitialized = false;
 
-// Enhanced Staking Calculator with Improved Formatting
+// Enhanced Staking Calculator
 const stakingCalculator = {
     formatBalance: function(amount) {
-        const num = parseFloat(amount);
-        if (isNaN(num)) return '0.00';
-
-        if (num === 0) return '0.00';
-        if (num < 0.01) return '<0.01';
-        if (num < 1000) return num.toFixed(2);
-        if (num < 1000000) return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
-        if (num < 1000000000) return `${(num / 1000000).toFixed(2)}M`;
-        return `${(num / 1000000000).toFixed(2)}B`;
-    },
-
-    formatAPY: function(rewardRate) {
-        const apy = (rewardRate / 100);
-        return this.formatBalance(apy);
+        try {
+            const num = parseFloat(amount);
+            if (isNaN(num)) return '0.00';
+            if (num === 0) return '0.00';
+            if (num < 0.01) return '<0.01';
+            if (num < 1000) return num.toFixed(2);
+            if (num < 1000000) {
+                return num.toLocaleString('en-US', { 
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2 
+                });
+            }
+            if (num < 1000000000) {
+                return `${(num / 1000000).toFixed(2)}M`;
+            }
+            return `${(num / 1000000000).toFixed(2)}B`;
+        } catch (error) {
+            console.error("Format balance error:", error);
+            return '0.00';
+        }
     },
 
     calculateRewards: function(stakeInfo, rewardRate) {
@@ -39,46 +45,29 @@ const stakingCalculator = {
             const lastCompoundTime = parseInt(stakeInfo.lastCompoundTime);
             const currentTime = Math.floor(Date.now() / 1000);
             const duration = currentTime - lastCompoundTime;
-
-            // Calculate rewards using contract formula
             const rawReward = (parseFloat(stakedAmount) * duration * (rewardRate / 1e18));
-            const burnRate = 10; // Contract default
+            const burnRate = 10;
             const netReward = rawReward * (1 - (burnRate / 100));
-
             return this.formatBalance(netReward);
         } catch (error) {
             console.error("Reward calculation error:", error);
             return '0.00';
         }
-    },
-
-    getDurationString: function(timestamp) {
-        if (!timestamp) return 'Not staking';
-        const now = Math.floor(Date.now() / 1000);
-        const duration = now - parseInt(timestamp);
-        
-        const days = Math.floor(duration / 86400);
-        const hours = Math.floor((duration % 86400) / 3600);
-        const minutes = Math.floor((duration % 3600) / 60);
-
-        if (days > 0) return `${days}d ${hours}h`;
-        if (hours > 0) return `${hours}h ${minutes}m`;
-        return `${minutes}m`;
     }
 };
 
-// Enhanced Contract Initialization
+// Initialize Web3 and Contracts
 async function initializeWeb3() {
     console.log("🔹 Starting Web3 initialization...");
 
     try {
         if (!window.ethereum) {
-            throw new Error("No Web3 provider found. Please install MetaMask!");
+            throw new Error("Please install MetaMask!");
         }
 
         web3 = new Web3(window.ethereum);
         
-        // Wait for contract config with timeout
+        // Wait for contract config
         const config = await waitForContractConfig();
         if (!config) {
             throw new Error("Contract configuration failed to load");
@@ -109,7 +98,7 @@ async function initializeWeb3() {
     }
 }
 
-// Wallet Connection with Enhanced Security
+// Wallet Connection Handler
 async function connectWallet() {
     if (!isInitialized) {
         showError("Please wait for initialization to complete");
@@ -127,7 +116,6 @@ async function connectWallet() {
         userAccount = accounts[0];
         console.log("✅ Wallet connected:", userAccount);
 
-        // Network check
         await checkAndSwitchNetwork();
 
         if (!hasSigned) {
@@ -144,7 +132,7 @@ async function connectWallet() {
     }
 }
 
-// Enhanced Dashboard Update
+// Dashboard Update Function
 async function updateDashboard() {
     if (!userAccount || !isInitialized) return;
 
@@ -152,7 +140,6 @@ async function updateDashboard() {
     showLoading();
 
     try {
-        // Fetch all data in parallel
         const [
             y2kBalance,
             stakeInfo,
@@ -169,17 +156,14 @@ async function updateDashboard() {
             stakingContract.methods.referralRewards(userAccount).call()
         ]);
 
-        // Update UI elements
+        // Update UI elements safely
         updateElement('y2kBalance', stakingCalculator.formatBalance(web3.utils.fromWei(y2kBalance, 'ether')));
         updateElement('stakedAmount', stakingCalculator.formatBalance(web3.utils.fromWei(stakeInfo.amount, 'ether')));
-        updateElement('apyPercentage', stakingCalculator.formatAPY(rewardRate));
+        updateElement('apyPercentage', (rewardRate / 100).toString());
         updateElement('earnedRewards', stakingCalculator.calculateRewards(stakeInfo, rewardRate));
         updateElement('autoCompoundStatus', autoCompounding ? "ON" : "OFF");
         
-        if (document.getElementById('stakingDuration')) {
-            updateElement('stakingDuration', stakingCalculator.getDurationString(stakeInfo.startTime));
-        }
-
+        // Update optional elements
         if (document.getElementById('referralStatus')) {
             updateElement('referralStatus', referralsEnabled ? "Active" : "Inactive");
             updateElement('referralRewards', stakingCalculator.formatBalance(web3.utils.fromWei(referralRewards, 'ether')));
@@ -190,9 +174,38 @@ async function updateDashboard() {
 
     } catch (error) {
         console.error("❌ Dashboard Update Error:", error);
-        showError("Failed to update dashboard");
         hideLoading();
     }
+}
+
+// UI Update Functions
+function updateWalletButton() {
+    const connectButton = document.getElementById('connectWallet');
+    const disconnectButton = document.getElementById('disconnectWallet');
+
+    if (!connectButton || !disconnectButton) {
+        console.error("Wallet buttons not found");
+        return;
+    }
+
+    try {
+        if (userAccount) {
+            connectButton.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+            connectButton.classList.add('connected');
+            disconnectButton.style.display = 'inline-block';
+        } else {
+            connectButton.textContent = 'Connect Wallet';
+            connectButton.classList.remove('connected');
+            disconnectButton.style.display = 'none';
+        }
+    } catch (error) {
+        console.error("Error updating wallet button:", error);
+    }
+}
+
+function updateElement(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
 }
 
 // Utility Functions
@@ -230,15 +243,32 @@ async function requestSignature() {
     return signature;
 }
 
-function updateElement(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.textContent = value;
+// State Management Functions
+function resetWalletState() {
+    userAccount = null;
+    hasSigned = false;
+    updateWalletButton();
+    resetDashboard();
 }
 
-function showError(message) {
-    alert(message); // Replace with your preferred error display method
+function resetDashboard() {
+    const elements = [
+        'y2kBalance',
+        'stakedAmount',
+        'apyPercentage',
+        'earnedRewards',
+        'autoCompoundStatus',
+        'referralStatus',
+        'referralRewards'
+    ];
+    
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = '0.00';
+    });
 }
 
+// UI Feedback Functions
 function showLoading() {
     const loader = document.getElementById('loadingOverlay');
     if (loader) loader.style.display = 'flex';
@@ -249,14 +279,12 @@ function hideLoading() {
     if (loader) loader.style.display = 'none';
 }
 
-function resetWalletState() {
-    userAccount = null;
-    hasSigned = false;
-    updateWalletButton();
-    resetDashboard();
+function showError(message) {
+    console.error(message);
+    alert(message);
 }
 
-// Event Listeners and Setup
+// Event Listeners
 function setupWalletListeners() {
     if (!window.ethereum) return;
 
@@ -277,20 +305,32 @@ async function handleAccountsChanged(accounts) {
 }
 
 async function checkExistingConnection() {
-    const accounts = await web3.eth.getAccounts();
-    if (accounts.length > 0) {
-        userAccount = accounts[0];
-        updateWalletButton();
-        await updateDashboard();
+    try {
+        const accounts = await web3.eth.getAccounts();
+        if (accounts.length > 0) {
+            userAccount = accounts[0];
+            updateWalletButton();
+            await updateDashboard();
+        }
+    } catch (error) {
+        console.error("Error checking existing connection:", error);
     }
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("🔹 Initializing dApp...");
+    
+    const connectButton = document.getElementById('connectWallet');
+    const disconnectButton = document.getElementById('disconnectWallet');
+
+    if (!connectButton || !disconnectButton) {
+        console.error("Required buttons not found in DOM");
+        return;
+    }
+
     await initializeWeb3();
 
-    // Add event listeners
-    document.getElementById('connectWallet')?.addEventListener('click', connectWallet);
-    document.getElementById('disconnectWallet')?.addEventListener('click', resetWalletState);
+    connectButton.addEventListener('click', connectWallet);
+    disconnectButton.addEventListener('click', resetWalletState);
 });
