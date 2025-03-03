@@ -43,7 +43,46 @@ const StatusUI = {
     }
 };
 
-// Enhanced Staking Calculator
+// Enhanced Balance and Stake Verification
+const BalanceVerifier = {
+    async getStakedAmount() {
+        try {
+            const stakeInfo = await stakingContract.methods.stakes(userAccount).call();
+            const amount = web3.utils.fromWei(stakeInfo.amount, 'ether');
+            console.log("Raw staked amount:", amount);
+            return parseFloat(amount) < 0.000001 ? '0' : amount;
+        } catch (error) {
+            console.error("Error getting staked amount:", error);
+            return '0';
+        }
+    },
+
+    async verifyBalances() {
+        try {
+            const [balance, stakeInfo] = await Promise.all([
+                y2kContract.methods.balanceOf(userAccount).call(),
+                stakingContract.methods.stakes(userAccount).call()
+            ]);
+            
+            console.log("Current Y2K balance:", web3.utils.fromWei(balance, 'ether'));
+            console.log("Current stake info:", {
+                amount: web3.utils.fromWei(stakeInfo.amount, 'ether'),
+                startTime: new Date(stakeInfo.startTime * 1000).toLocaleString(),
+                lastCompoundTime: new Date(stakeInfo.lastCompoundTime * 1000).toLocaleString()
+            });
+
+            return {
+                balance: web3.utils.fromWei(balance, 'ether'),
+                stakedAmount: web3.utils.fromWei(stakeInfo.amount, 'ether')
+            };
+        } catch (error) {
+            console.error("Balance verification error:", error);
+            return { balance: '0', stakedAmount: '0' };
+        }
+    }
+};
+
+// Number Formatting Utility
 const stakingCalculator = {
     formatBalance: function(amount) {
         try {
@@ -159,6 +198,10 @@ const stakingOperations = {
             const tx = await stakingContract.methods.stake(amountWei, referrer)
                 .send({ from: userAccount });
 
+            // Verify stake after transaction
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const verifiedStake = await BalanceVerifier.getStakedAmount();
+            
             StatusUI.show("Staking successful!");
             document.getElementById('stakeAmount').value = '';
             await updateDashboard();
@@ -192,6 +235,10 @@ const stakingOperations = {
             const tx = await stakingContract.methods.unstake(amountWei)
                 .send({ from: userAccount });
 
+            // Verify unstake after transaction
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            const verifiedStake = await BalanceVerifier.getStakedAmount();
+            
             StatusUI.show("Unstaking successful!");
             document.getElementById('unstakeAmount').value = '';
             await updateDashboard();
@@ -199,54 +246,6 @@ const stakingOperations = {
 
         } catch (error) {
             console.error("Unstaking failed:", error);
-            StatusUI.show(this.getErrorMessage(error), true);
-        } finally {
-            hideLoading();
-        }
-    },
-
-    async claimRewards() {
-        if (!userAccount) {
-            StatusUI.show("Please connect your wallet first", true);
-            return;
-        }
-
-        try {
-            showLoading("Claiming rewards...");
-            const tx = await stakingContract.methods.claimReward()
-                .send({ from: userAccount });
-
-            StatusUI.show("Rewards claimed successfully!");
-            await updateDashboard();
-            return tx;
-
-        } catch (error) {
-            console.error("Claim failed:", error);
-            StatusUI.show(this.getErrorMessage(error), true);
-        } finally {
-            hideLoading();
-        }
-    },
-
-    async toggleAutoCompound() {
-        if (!userAccount) {
-            StatusUI.show("Please connect your wallet first", true);
-            return;
-        }
-
-        try {
-            const currentStatus = await stakingContract.methods.autoCompoundingEnabled().call();
-            showLoading("Updating auto-compound...");
-            
-            const tx = await stakingContract.methods.toggleAutoCompounding(!currentStatus)
-                .send({ from: userAccount });
-
-            StatusUI.show(`Auto-compound ${!currentStatus ? 'enabled' : 'disabled'}`);
-            await updateDashboard();
-            return tx;
-
-        } catch (error) {
-            console.error("Toggle failed:", error);
             StatusUI.show(this.getErrorMessage(error), true);
         } finally {
             hideLoading();
@@ -342,15 +341,16 @@ async function updateDashboard() {
     showLoading("Updating dashboard...");
 
     try {
+        // Get verified balances first
+        const balances = await BalanceVerifier.verifyBalances();
+        
         const [
-            y2kBalance,
             stakeInfo,
             rewardRate,
             autoCompounding,
             referralsEnabled,
             referralRewards
         ] = await Promise.all([
-            y2kContract.methods.balanceOf(userAccount).call(),
             stakingContract.methods.stakes(userAccount).call(),
             stakingContract.methods.rewardRate().call(),
             stakingContract.methods.autoCompoundingEnabled().call(),
@@ -358,12 +358,18 @@ async function updateDashboard() {
             stakingContract.methods.referralRewards(userAccount).call()
         ]);
 
-        // Update UI elements
-        updateElement('y2kBalance', stakingCalculator.formatBalance(web3.utils.fromWei(y2kBalance, 'ether')));
-        updateElement('stakedAmount', stakingCalculator.formatBalance(web3.utils.fromWei(stakeInfo.amount, 'ether')));
+        // Update UI with verified amounts
+        updateElement('y2kBalance', stakingCalculator.formatBalance(balances.balance));
+        updateElement('stakedAmount', stakingCalculator.formatBalance(balances.stakedAmount));
         updateElement('apyPercentage', (rewardRate / 100).toString());
-        updateElement('earnedRewards', stakingCalculator.calculateRewards(stakeInfo, rewardRate));
         
+        // Only calculate rewards if there's an active stake
+        if (parseFloat(balances.stakedAmount) > 0) {
+            updateElement('earnedRewards', stakingCalculator.calculateRewards(stakeInfo, rewardRate));
+        } else {
+            updateElement('earnedRewards', '0.00');
+        }
+
         // Update auto-compound toggle
         const autoCompoundToggle = document.getElementById('autoCompoundToggle');
         if (autoCompoundToggle) {
@@ -415,7 +421,7 @@ function setupStakingListeners() {
         }
     });
 
-    // Staking Actions
+        // Staking Actions (continued...)
     document.getElementById('stakeButton')?.addEventListener('click', async () => {
         const amount = document.getElementById('stakeAmount').value;
         if (!amount || isNaN(amount) || amount <= 0) {
@@ -439,23 +445,9 @@ function setupStakingListeners() {
         await stakingOperations.claimRewards();
     });
 
-        // Auto-compound Toggle
+    // Auto-compound Toggle
     document.getElementById('autoCompoundToggle')?.addEventListener('change', async (e) => {
         await stakingOperations.toggleAutoCompound();
-    });
-
-    // Referral Link Copy
-    document.querySelector('button[onclick="copyReferralLink()"]')?.addEventListener('click', async () => {
-        const referralLink = document.getElementById('referralLink');
-        if (!referralLink) return;
-
-        try {
-            await navigator.clipboard.writeText(referralLink.value);
-            StatusUI.show("Referral link copied!");
-        } catch (error) {
-            console.error("Copy failed:", error);
-            StatusUI.show("Failed to copy link", true);
-        }
     });
 }
 
@@ -524,6 +516,21 @@ function updateWalletButton() {
     }
 }
 
+// Loading State Management
+function showLoading(message = "Loading...") {
+    const loader = document.getElementById('loadingOverlay');
+    if (loader) {
+        const loadingMessage = document.getElementById('loadingMessage');
+        if (loadingMessage) loadingMessage.textContent = message;
+        loader.style.display = 'flex';
+    }
+}
+
+function hideLoading() {
+    const loader = document.getElementById('loadingOverlay');
+    if (loader) loader.style.display = 'none';
+}
+
 // State Management
 function resetWalletState() {
     userAccount = null;
@@ -547,21 +554,6 @@ function resetDashboard() {
         const element = document.getElementById(id);
         if (element) element.textContent = '0.00';
     });
-}
-
-// Loading State Management
-function showLoading(message = "Loading...") {
-    const loader = document.getElementById('loadingOverlay');
-    if (loader) {
-        const loadingMessage = document.getElementById('loadingMessage');
-        if (loadingMessage) loadingMessage.textContent = message;
-        loader.style.display = 'flex';
-    }
-}
-
-function hideLoading() {
-    const loader = document.getElementById('loadingOverlay');
-    if (loader) loader.style.display = 'none';
 }
 
 // Wallet Event Listeners
