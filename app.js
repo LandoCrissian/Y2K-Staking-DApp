@@ -222,22 +222,23 @@ Timestamp: ${new Date().toISOString()}`;
         }, 5000);
     }
 
-    // Share on Twitter/X
-    function shareOnTwitter() {
-        const referralLink = referralLinkInput.value;
-        const tweetText = encodeURIComponent(
-            `🚀 Join me in staking $Y2K and earn $POGs rewards!\n\n` +
-            `💎 Use my referral link to get started:\n` +
-            `${referralLink}\n\n` +
-            `#Y2KCoin #CryptoStaking #POGs #Web3`
-        );
-        
-        window.open(
-            `https://twitter.com/intent/tweet?text=${tweetText}`,
-            '_blank',
-            'width=600,height=400'
-        );
-    }
+    // Share on Twitter/X with obfuscated referral
+function shareOnTwitter() {
+    // Instead of using the full referral link with wallet address
+    const baseUrl = window.location.origin + window.location.pathname;
+    const tweetText = encodeURIComponent(
+        `🚀 Join me in staking $Y2K and earn $POGs rewards!\n\n` +
+        `💎 Join the Y2K Family:\n` +
+        `${baseUrl}\n\n` +
+        `#Y2KCoin #CryptoStaking #POGs #Web3`
+    );
+    
+    window.open(
+        `https://twitter.com/intent/tweet?text=${tweetText}`,
+        '_blank',
+        'width=600,height=400'
+    );
+}
 
     // Copy Referral Link
     async function copyReferralLink() {
