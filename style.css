@@ -185,6 +185,16 @@ button:disabled {
     transform: none;
     box-shadow: none;
 }
+/* Add spacing between staking action buttons */
+.stake-container button,
+.unstake-container button {
+    margin-bottom: 0.75rem;
+}
+
+.stake-container button:last-child,
+.unstake-container button:last-child {
+    margin-bottom: 0;
+}
 
 /* Share Buttons */
 .share-buttons {
