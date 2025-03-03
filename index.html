@@ -5,82 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Y2K Staking DApp - Stake Y2K tokens and earn POGs rewards">
     <title>Y2K Staking DApp</title>
-    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
         <h1>Y2K Staking DApp</h1>
-        <div class="wallet-buttons">
+        <div class="wallet-info">
             <button id="connectWallet">Connect Wallet</button>
             <button id="disconnectWallet" style="display: none;">Disconnect</button>
+            <p id="networkInfo" style="display: none;">Network: <span id="currentNetwork"></span></p>
         </div>
     </header>
+
     <main>
-<section id="staking">
-    <h2>Staking Dashboard</h2>
-    <p>Y2K Balance: <span id="y2kBalance">0</span> Y2K</p>
-    <p>Currently Staked: <span id="stakedAmount">0</span> Y2K</p>
-    <p>🔥 Burned Rewards: <span id="burnedRewards">0</span> POGs</p>
-    <p>📊 Estimated APY: <span id="apyPercentage">0</span>%</p>
-    <p>💹 Total Y2K Staked: <span id="totalStaked">0</span> Y2K</p>
-
-    <div class="staking-actions">
-        <div class="input-wrapper">
-            <div class="input-with-max">
-                <input type="number" id="stakeAmount" placeholder="Enter Y2K amount">
-                <button id="maxStake" class="max-button">MAX</button>
+        <section id="stakingInfo" class="card">
+            <h2>Staking Overview</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <h3>Y2K Balance</h3>
+                    <p id="y2kBalance">0 Y2K</p>
+                </div>
+                <div class="info-item">
+                    <h3>Staked Amount</h3>
+                    <p id="stakedAmount">0 Y2K</p>
+                </div>
+                <div class="info-item">
+                    <h3>Pending Rewards</h3>
+                    <p id="pendingRewards">0 POGs</p>
+                </div>
+                <div class="info-item">
+                    <h3>Total Value Locked</h3>
+                    <p id="totalStaked">0 Y2K</p>
+                </div>
             </div>
-            <button id="stakeButton">Stake</button>
-        </div>
+        </section>
 
-        <div class="input-wrapper">
-            <div class="input-with-max">
-                <input type="number" id="unstakeAmount" placeholder="Enter amount to unstake">
-                <button id="maxUnstake" class="max-button">MAX</button>
+        <section id="stakingActions" class="card">
+            <h2>Staking Actions</h2>
+            <div class="action-grid">
+                <div class="stake-container">
+                    <h3>Stake Y2K</h3>
+                    <div class="input-with-max">
+                        <input type="number" id="stakeAmount" placeholder="Amount to stake">
+                        <button id="maxStake" class="max-button">MAX</button>
+                    </div>
+                    <button id="approveButton" class="action-button">Approve Y2K</button>
+                    <button id="stakeButton" class="action-button">Stake</button>
+                </div>
+
+                <div class="unstake-container">
+                    <h3>Unstake Y2K</h3>
+                    <div class="input-with-max">
+                        <input type="number" id="unstakeAmount" placeholder="Amount to unstake">
+                        <button id="maxUnstake" class="max-button">MAX</button>
+                    </div>
+                    <button id="unstakeButton" class="action-button">Unstake</button>
+                </div>
             </div>
-            <button id="unstakeButton">Unstake</button>
-        </div>
 
-        <div class="rewards-section">
-            <p>POGs Earned: <span id="earnedRewards">0</span></p>
-            <button id="claimRewards">Claim Rewards</button>
-        </div>
-    </div>
-</section>
-        <section id="autoCompounding">
-            <h2>🔄 Auto-Compounding</h2>
-            <label class="switch">
-                <input type="checkbox" id="autoCompoundToggle">
-                <span class="slider"></span>
-            </label>
-            <p>Status: <span id="autoCompoundStatus">OFF</span></p>
+            <div class="rewards-container">
+                <h3>Rewards</h3>
+                <button id="claimRewards" class="action-button">Claim POGs Rewards</button>
+            </div>
         </section>
 
-        <section id="lottery">
-            <h2>🎟️ Lottery</h2>
-            <p>🔹 Participants: <span id="lotteryParticipants">0</span></p>
-            <p>💰 Prize Pool: <span id="lotteryPrizePool">0</span> POGs</p>
-            <p>⏳ Next Draw In: <span id="lotteryCountdown">00:00:00</span></p>
-            <h3>🏆 Recent Winner: <span id="lotteryWinner">N/A</span></h3>
+        <section id="referralSystem" class="card">
+            <h2>Referral Program</h2>
+            <div class="referral-info">
+                <div class="referral-link">
+                    <h3>Your Referral Link</h3>
+                    <div class="link-container">
+                        <input type="text" id="referralLink" readonly>
+                        <button id="copyLink" class="action-button">Copy</button>
+                    </div>
+                </div>
+                <div class="referral-stats">
+                    <div class="info-item">
+                        <h3>Referral Rewards</h3>
+                        <p id="referralRewards">0 POGs</p>
+                    </div>
+                    <div class="info-item">
+                        <h3>Referred By</h3>
+                        <p id="referredBy">None</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <section id="referrals">
-            <h2>👥 Referral Program</h2>
-            <p>Your Referral Link:</p>
-            <input type="text" id="referralLink" readonly>
-            <button onclick="copyReferralLink()">Copy</button>
-            <p>🏅 Referral Rewards Earned: <span id="referralRewards">0</span> POGs</p>
-            <h3>🎖️ Top Referrers:</h3>
-            <ul id="referralLeaderboard"></ul>
-        </section>
-
-        <section id="stakingBenefits">
-            <h2>💡 Why Stake?</h2>
-            <p>✅ Earn passive income in <strong>POGs</strong>.</p>
-            <p>✅ Participate in <strong>monthly lottery rewards</strong>.</p>
-            <p>✅ Get higher APY with <strong>longer staking durations</strong>.</p>
-            <p>✅ Referral bonuses for <strong>bringing in new stakers</strong>.</p>
+        <section id="emergencySection" class="card">
+            <h2>Emergency Withdrawal</h2>
+            <div class="emergency-info">
+                <p class="warning">⚠️ Emergency withdrawal incurs a 50% penalty and requires 7-day staking period</p>
+                <p>Status: <span id="emergencyStatus">Disabled</span></p>
+                <button id="emergencyWithdraw" class="action-button emergency" disabled>Emergency Withdraw</button>
+            </div>
         </section>
     </main>
 
@@ -90,15 +109,18 @@
         <p id="loadingMessage">Processing Transaction...</p>
     </div>
 
+    <!-- Transaction Status Modal -->
+    <div id="txStatusModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3 id="txStatusTitle">Transaction Status</h3>
+            <p id="txStatusMessage"></p>
+            <button id="closeTxStatus" class="action-button">Close</button>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
-    <script>
-        // Check Web3 availability
-        if (typeof Web3 === 'undefined') {
-            console.error("Web3 not loaded!");
-        }
-    </script>
-    <script src="contract.js"></script>
-    <script src="script.js"></script>
+    <script src="contract-abi.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
