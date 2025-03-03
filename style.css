@@ -186,6 +186,39 @@ button:disabled {
     box-shadow: none;
 }
 
+/* Share Buttons */
+.share-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    width: 100%;
+}
+
+.button-icon {
+    width: 1.2em;
+    height: 1.2em;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+.twitter-share {
+    background: #1DA1F2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.twitter-share:hover {
+    background: #1a8cd8;
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
 /* Referral Section */
 .referral-info {
     display: grid;
@@ -198,6 +231,7 @@ button:disabled {
 
 .link-container {
     display: flex;
+    flex-direction: column;
     gap: 0.5rem;
 }
 
@@ -350,7 +384,7 @@ button:disabled {
         padding: 1rem;
     }
 
-        .info-grid,
+    .info-grid,
     .action-grid,
     .referral-stats {
         gap: 0.75rem;
@@ -390,23 +424,16 @@ button:disabled {
         font-size: 0.875rem;
     }
 
-    .card h2 {
-        font-size: 1.25rem;
-    }
-
-    .referral-link input {
-        font-size: 0.875rem;
-    }
-
-    .link-container {
+    .share-buttons {
         flex-direction: column;
     }
 
-    .link-container button {
-        width: 100%;
+    .button-icon {
+        width: 1em;
+        height: 1em;
     }
 
-    .modal-content h3 {
+    .card h2 {
         font-size: 1.25rem;
     }
 
